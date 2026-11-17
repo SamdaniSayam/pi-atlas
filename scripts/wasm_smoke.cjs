@@ -40,7 +40,17 @@ function main() {
       fs.readFileSync(path.join(DATA_DIR, "chunks", `chunk_${String(i).padStart(5, "0")}.bin`)))
   );
 
-  const engine = new PiEngine(manifestJson, new Uint8Array(packed));
+  const engine = new PiEngine(manifestJson);
+  ok("engine starts empty and accepts SHA-256-verified chunks", () => {
+    assert.equal(engine.loaded_chunks(), 0);
+    for (let i = 0; i < manifest.chunks.length; i += 1) {
+      const start = manifest.chunks.slice(0, i).reduce((a, c) => a + c.bytes, 0);
+      const bytes = packed.subarray(start, start + manifest.chunks[i].bytes);
+      engine.set_chunk(i, new Uint8Array(bytes));
+    }
+    assert.equal(engine.loaded_chunks(), 2);
+    assert.ok(engine.has_chunk(0) && engine.has_chunk(1));
+  });
 
   ok("engine loads real 2M dataset with correct geometry", () => {
     assert.equal(engine.total_digits, 2_000_000n);
@@ -121,10 +131,21 @@ function main() {
     assert.ok(Number.isFinite(s.chi_square) && s.chi_square > 0);
   });
 
-  ok("constructor rejects checksum-corrupted packed data", () => {
-    const bad = new Uint8Array(packed);
+  ok("get_window works with only the owning chunks resident", () => {
+    const partial = new PiEngine(manifestJson);
+    const bytes = packed.subarray(0, manifest.chunks[0].bytes);
+    partial.set_chunk(0, new Uint8Array(bytes));
+    assert.equal(partial.get_window(1n, 10n), "1415926535");
+    assert.equal(partial.loaded_chunks(), 1);
+    assert.throws(() => partial.get_window(1_000_001n, 1_000_010n), /not loaded/);
+  });
+
+  ok("set_chunk rejects checksum-corrupted data", () => {
+    const badEngine = new PiEngine(manifestJson);
+    const bad = new Uint8Array(manifest.chunks[0].bytes);
     bad[0] ^= 0x01;
-    assert.throws(() => new PiEngine(manifestJson, bad));
+    assert.throws(() => badEngine.set_chunk(0, bad), /sha256 mismatch/);
+    assert.equal(badEngine.loaded_chunks(), 0);
   });
 
   console.log(`\nAll ${checks} WASM smoke checks passed against the real 2M π fixture.`);

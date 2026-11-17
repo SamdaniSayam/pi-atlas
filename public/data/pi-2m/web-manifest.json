@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "format": "pi-atlas-packed-v1",
+  "datasetId": "pi-2m",
+  "totalDigits": 2000000,
+  "chunkDigits": 1000000,
+  "chunkCount": 2,
+  "packedBytes": 1000000,
+  "firstDigits": "1415926535897932384626433832795028841971693993751058209749445923",
+  "sha256Packed": "d6172c277dff1dcf66168a8017fe74280021ca58ca4febf3a916c4b0a5ce67d8",
+  "baseUrl": "chunks/",
+  "filenameTemplate": "chunk_{index:05d}.bin",
+  "chunks": [
+    {
+      "index": 0,
+      "file": "chunk_00000.bin",
+      "digits": 1000000,
+      "bytes": 500000,
+      "packedOffset": 0,
+      "digitOffset": 0,
+      "sha256": "c6208b04f6135336d95b1a010956ef3832e534685a26eda0f4e30c92e9f1a532"
+    },
+    {
+      "index": 1,
+      "file": "chunk_00001.bin",
+      "digits": 1000000,
+      "bytes": 500000,
+      "packedOffset": 500000,
+      "digitOffset": 1000000,
+      "sha256": "2157f00605d39a1d06167e703ec6c149d3bc511d59997589cb66ee46d01a322a"
+    }
+  ],
+  "checkpoints": [
+    {
+      "query": "12",
+      "firstPosition": 148
+    }
+  ],
+  "searchIndex": {
+    "kind": "none",
+    "note": "No persistent index; full searches scan all chunks sequentially."
+  }
+}

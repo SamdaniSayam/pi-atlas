@@ -16,6 +16,7 @@
     "typecheck": "tsc -b --noEmit",
     "build:wasm": "bash scripts/build_wasm.sh",
     "test:wasm": "node scripts/wasm_smoke.cjs",
+    "test:parity": "bash scripts/parity_safe.sh",
     "verify:pi": "python3 scripts/verify_pi.py public/pi-2m.txt public/pi-2m.sha256",
     "generate:og": "node scripts/make_og.mjs"
   },

@@ -343,8 +343,8 @@ fn unpack_window(ds: &Dataset, start: u64, count: u64, buf: &mut Vec<u8>) {
         let take = (chunk_len - within).min(end - pos);
         let take_even = take - (take % 2);
         if take_even > 0 {
-            let base_byte = (chunk_start / 2 + within / 2) as usize;
-            crate::pack::unpack_into(&ds.packed[base_byte..], 0, take_even, buf);
+            let base_byte = (within / 2) as usize;
+            crate::pack::unpack_into(&ds.chunks[chunk_idx][base_byte..], 0, take_even, buf);
             pos += take_even;
         }
         if take > take_even {

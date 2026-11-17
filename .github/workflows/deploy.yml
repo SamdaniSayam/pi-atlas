@@ -15,6 +15,14 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Stage 8 safety: verification ALWAYS runs on every push, but deployment is
+# opt-in via the repository variable PI_ATLAS_PAGES_DEPLOY=true. This keeps the
+# existing live site recoverable until the browser-only migration has been
+# verified end to end. No Rust toolchain is needed — the generated WASM
+# bindings are committed under src/generated/pi-wasm/.
+env:
+  PI_ATLAS_DATASET_URL: ${{ vars.PI_ATLAS_DATASET_URL || 'data/pi-2m/' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -27,51 +35,33 @@ jobs:
           cache: npm
       - run: npm ci
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: service
-
       - name: Typecheck
         run: npm run typecheck
-      - name: Unit tests
+
+      - name: Unit + integration tests (96 tests)
         run: npm test
 
-      # Regenerate the 2M parity pack from the committed fixture — the real
-      # 1B dataset and its indexes are never in Git or CI.
-      - name: Regenerate 2M test dataset
-        run: python3 scripts/pack_dataset.py --input public/pi-2m.txt --output-dir /tmp/pi-atlas-e2e-data --chunk-digits 1000000
-      - name: Build search service
-        run: cargo build --release --locked -p pi-server
-        working-directory: service
+      - name: Verify committed 2M π fixture
+        run: npm run verify:pi
 
-      - name: Build frontend
+      - name: Build browser-only frontend
         env:
-          # Public API endpoint (not a secret). Set it in repo Variables as
-          # PI_ATLAS_API_URL, e.g. https://pi-atlas.example.com/api/v1.
-          # Unset → same-origin /api/v1, which only works alongside a proxy.
-          VITE_PI_ATLAS_API: ${{ vars.PI_ATLAS_API_URL }}
+          # Pages serves from https://<user>.github.io/<repo>/ — relative URLs.
+          VITE_BASE_PATH: ./
+          VITE_PI_DATASET_URL: ${{ env.PI_ATLAS_DATASET_URL }}
         run: npm run build
+
+      - name: Verify Pages artifact is self-contained
+        run: bash scripts/verify_pages_artifact.sh dist "dist/${PI_ATLAS_DATASET_URL}"
 
       - run: npx playwright install --with-deps chromium
 
-      - name: E2E against real Rust service (alternate ports)
+      # E2E runs against the same static build users get. The Rust service is
+      # no longer started: search happens in the WASM Worker, chunks are static.
+      - name: E2E against the browser-only build
         env:
           PI_ATLAS_E2E_PREVIEW_PORT: 4175
-          PI_ATLAS_E2E_API_PORT: 7788
-          PI_ATLAS_E2E_DATA: /tmp/pi-atlas-e2e-data
-          PI_ATLAS_E2E_SERVER_BIN: ${{ github.workspace }}/service/target/release/pi-server
-          PI_ATLAS_API: http://127.0.0.1:7788
         run: npm run test:e2e
-
-      - name: No localhost or absolute asset paths in production bundle
-        run: |
-          if grep -R -E 'localhost|127\.0\.0\.1' dist --include='*.js' --include='*.html' --include='*.css'; then
-            echo 'ERROR: production bundle references localhost'; exit 1
-          fi
-          if grep -R -E 'url\(/|href="/|src="/' dist --include='*.html' --include='*.css'; then
-            echo 'ERROR: absolute asset path breaks GitHub Pages subpath'; exit 1
-          fi
 
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -79,6 +69,7 @@ jobs:
 
   deploy:
     needs: verify
+    if: ${{ vars.PI_ATLAS_PAGES_DEPLOY == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

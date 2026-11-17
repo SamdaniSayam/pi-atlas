@@ -28,8 +28,6 @@ import { submitPattern, cancelJob, pollJob, type PatternResult, type PatternMatc
 import { expectedPatternMatches, type PatternSpec } from "../engine/patternSearch";
 
 const MODES: SearchMode[] = ["digits", "dates", "letters", "colors", "shapes"];
-/** Job id of the in-flight pattern search (module scope for the cancel button). */
-let activePatternJobId: number | null = null;
 const MODE_TITLES: Record<SearchMode, string> = {
   digits: "Number Explorer",
   dates: "Date Explorer",
@@ -745,6 +743,8 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
   const [exact, setExact] = useState(() => params.get("exact") !== "0");
   const [searching, setSearching] = useState(false);
   const [progress, setProgress] = useState<{ checked: number; total: number } | null>(null);
+  // Per-instance job handle for the cancel button (was module-scope shared state).
+  const activePatternJobId = useRef<number | null>(null);
   const navigate = useNavigate();
   const history = useHistory.getState();
   const toast = useToast((s) => s.show);
@@ -788,7 +788,7 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
       if (submission.cached) {
         apiResult = submission.result;
       } else {
-        activePatternJobId = submission.jobId;
+        activePatternJobId.current = submission.jobId;
         const settled = await pollJob<PatternResult>(submission.jobId, {
           onProgress: (checked, total) => setProgress({ checked, total }),
         });
@@ -817,7 +817,7 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
       toast(err instanceof Error ? err.message : "The pattern search failed.");
       return;
     }
-    activePatternJobId = null;
+    activePatternJobId.current = null;
     setSearching(false);
     setProgress(null);
 
@@ -892,9 +892,9 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
           onCancel={() => {
             setSearching(false);
             setProgress(null);
-            if (activePatternJobId !== null) {
-              void cancelJob(activePatternJobId).catch(() => undefined);
-              activePatternJobId = null;
+            if (activePatternJobId.current !== null) {
+              void cancelJob(activePatternJobId.current).catch(() => undefined);
+              activePatternJobId.current = null;
             }
           }}
           onSearch={() => void startSearch()}

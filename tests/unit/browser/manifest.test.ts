@@ -38,6 +38,20 @@ describe("web manifest validation", () => {
     const { manifest } = await makeDataset(100, 2);
     expect(() => validateManifest({ ...manifest, sha256Packed: "xyz" })).toThrow(/sha256Packed/);
   });
+
+  it("rejects snake_case checkpoints copied from the core manifest", async () => {
+    const { manifest } = await makeDataset(100, 2);
+    const bad = {
+      ...manifest,
+      checkpoints: [{ query: "12", first_position: 148 }],
+    };
+    expect(() => validateManifest(bad)).toThrow(/firstPosition/);
+    const good = {
+      ...manifest,
+      checkpoints: [{ query: "12", firstPosition: 148 }],
+    };
+    expect(validateManifest(good).checkpoints[0].firstPosition).toBe(148);
+  });
 });
 
 describe("chunk index mapping", () => {

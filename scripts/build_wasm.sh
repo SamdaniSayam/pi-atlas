@@ -6,8 +6,10 @@
 #   2. generates browser ES-module bindings (--target web), and
 #   3. generates CommonJS bindings (--target nodejs) for the smoke test.
 #
-# Generated artifacts land under service/target/ (already gitignored); they are
-# NOT committed. Stage 4 will wire the browser bindings into the Pages build.
+# Generated artifacts land under service/target/ (gitignored) for tests, and the
+# browser bindings are copied into src/generated/pi-wasm/ so Vite bundles them
+# (the .wasm binary becomes a hashed asset via `new URL(..., import.meta.url)`).
+# src/generated/ IS committed so GitHub Pages needs no Rust toolchain.
 #
 # Toolchain prerequisites (one-time):
 #   rustup target add wasm32-unknown-unknown
@@ -48,10 +50,17 @@ echo "==> generating browser bindings (--target web)"
 $CLI --target web --out-dir target/wasm-pkg-web "$WASM"
 printf '{"type":"module"}\n' > target/wasm-pkg-web/package.json
 
+echo "==> copying browser bindings into src/generated/pi-wasm/ (committed for Pages)"
+mkdir -p "$ROOT/src/generated/pi-wasm"
+cp target/wasm-pkg-web/pi_wasm.js target/wasm-pkg-web/pi_wasm.d.ts \
+   target/wasm-pkg-web/pi_wasm_bg.wasm target/wasm-pkg-web/pi_wasm_bg.wasm.d.ts \
+   "$ROOT/src/generated/pi-wasm/"
+printf '{"type":"module"}\n' > "$ROOT/src/generated/pi-wasm/package.json"
+
 echo "==> generating Node bindings (--target nodejs, for smoke tests)"
 $CLI --target nodejs --out-dir target/wasm-pkg-node "$WASM"
 printf '{"type":"commonjs"}\n' > target/wasm-pkg-node/package.json
 
 echo "==> WASM build complete"
-echo "    browser: service/target/wasm-pkg-web/"
-echo "    node:    service/target/wasm-pkg-node/"
+echo "    browser (source): src/generated/pi-wasm/"
+echo "    node:             service/target/wasm-pkg-node/"

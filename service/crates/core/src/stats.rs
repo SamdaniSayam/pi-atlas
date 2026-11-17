@@ -19,9 +19,8 @@ pub fn compute_stats(ds: &crate::Dataset, ctl: Option<&crate::exact::ScanControl
                 return Err(crate::CoreError::Verify("cancelled".into()));
             }
         }
-        let chunk_start = ds.chunk_digit_starts[c];
         let n = ds.chunk_digits(c);
-        let packed = &ds.packed[chunk_start as usize / 2..(chunk_start + n) as usize / 2];
+        let packed = ds.chunk_bytes(c);
         scratch.clear();
         crate::pack::unpack_into(packed, 0, n, &mut scratch);
         for &b in &scratch {

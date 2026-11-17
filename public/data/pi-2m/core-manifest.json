@@ -1,0 +1,25 @@
+{
+  "format": "pi-atlas-packed-v1",
+  "total_digits": 2000000,
+  "chunk_digits": 1000000,
+  "first_digits": "1415926535897932384626433832795028841971693993751058209749445923",
+  "checkpoints": [
+    {
+      "query": "12",
+      "first_position": 148
+    }
+  ],
+  "sha256_packed": "d6172c277dff1dcf66168a8017fe74280021ca58ca4febf3a916c4b0a5ce67d8",
+  "chunks": [
+    {
+      "digits": 1000000,
+      "bytes": 500000,
+      "sha256": "c6208b04f6135336d95b1a010956ef3832e534685a26eda0f4e30c92e9f1a532"
+    },
+    {
+      "digits": 1000000,
+      "bytes": 500000,
+      "sha256": "2157f00605d39a1d06167e703ec6c149d3bc511d59997589cb66ee46d01a322a"
+    }
+  ]
+}

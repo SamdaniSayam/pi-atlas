@@ -105,7 +105,7 @@ pub fn longest_existing_prefix(
         }
         let chunk_start = ds.chunk_digit_starts[c];
         let chunk_digits = ds.chunk_digits(c);
-        let packed_slice = &ds.packed[chunk_start as usize / 2..(chunk_start + chunk_digits) as usize / 2];
+        let packed_slice = ds.chunk_bytes(c);
         scratch.clear();
         crate::pack::unpack_into(packed_slice, 0, chunk_digits, &mut scratch);
         base = chunk_start;
@@ -171,7 +171,7 @@ pub fn search_exact(
         }
         let chunk_start = ds.chunk_digit_starts[c]; // 0-based digit offset
         let chunk_digits = ds.chunk_digits(c);
-        let packed_slice = &ds.packed[chunk_start as usize / 2..(chunk_start + chunk_digits) as usize / 2];
+        let packed_slice = ds.chunk_bytes(c);
 
         scratch.clear();
         scratch.extend_from_slice(&carry);
@@ -221,7 +221,7 @@ pub fn find_first(ds: &Dataset, query: &[u8]) -> Result<u64, CoreError> {
     for c in 0..ds.chunk_count() {
         let chunk_start = ds.chunk_digit_starts[c];
         let chunk_digits = ds.chunk_digits(c);
-        let packed_slice = &ds.packed[chunk_start as usize / 2..(chunk_start + chunk_digits) as usize / 2];
+        let packed_slice = ds.chunk_bytes(c);
         scratch.clear();
         scratch.extend_from_slice(&carry);
         crate::pack::unpack_into(packed_slice, 0, chunk_digits, &mut scratch);
@@ -252,7 +252,7 @@ mod tests {
     fn build_dataset(ascii: &[u8], chunk_digits: usize) -> Dataset {
         assert_eq!(ascii.len() % 2, 0);
         assert_eq!(chunk_digits % 2, 0);
-        let mut packed = Vec::new();
+        let mut chunk_vecs: Vec<Vec<u8>> = Vec::new();
         let mut chunks = Vec::new();
         let mut starts = vec![0u64];
         for block in ascii.chunks(chunk_digits) {
@@ -262,22 +262,23 @@ mod tests {
                 bytes: p.len() as u64,
                 sha256: crate::manifest::sha256_hex(&p),
             });
-            packed.extend_from_slice(&p);
+            chunk_vecs.push(p);
             starts.push(starts.last().unwrap() + block.len() as u64);
         }
         starts.pop(); // last entry is the end offset
+        let concatenated: Vec<u8> = chunk_vecs.iter().flatten().copied().collect();
         let manifest = Manifest {
             format: FORMAT_ID.to_string(),
             total_digits: ascii.len() as u64,
             chunk_digits: chunk_digits as u64,
             first_digits: String::from_utf8(ascii[..ascii.len().min(64)].to_vec()).unwrap(),
             checkpoints: vec![],
-            sha256_packed: crate::manifest::sha256_hex(&packed),
+            sha256_packed: crate::manifest::sha256_hex(&concatenated),
             chunks,
         };
         manifest.validate().unwrap();
-        manifest.verify_packed(&packed).unwrap();
-        Dataset { manifest, packed, chunk_digit_starts: starts }
+        manifest.verify_packed(&concatenated).unwrap();
+        Dataset { manifest, chunks: chunk_vecs, chunk_digit_starts: starts }
     }
 
     /// Reference: the TS engine's overlapping indexOf scan.

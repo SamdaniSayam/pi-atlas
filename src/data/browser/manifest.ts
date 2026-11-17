@@ -141,6 +141,21 @@ export function validateManifest(value: unknown): WebDatasetManifest {
   if (digitAcc !== totalDigits) throw new ManifestError(`chunk digit sum ${digitAcc} != total ${String(totalDigits)}`);
   if (m.packedBytes !== byteAcc) throw new ManifestError(`packedBytes ${String(m.packedBytes)} != ${byteAcc}`);
   if (!Array.isArray(m.checkpoints)) throw new ManifestError("checkpoints must be an array");
+  const checkpoints = m.checkpoints.map((raw, i) => {
+    if (typeof raw !== "object" || raw === null) throw new ManifestError(`checkpoint ${i} is not an object`);
+    const c = raw as Record<string, unknown>;
+    if (typeof c.query !== "string") throw new ManifestError(`checkpoint ${i} query must be a string`);
+    if (!Number.isSafeInteger(c.firstPosition) || (c.firstPosition as number) < 1) {
+      // A common producer bug is copying the core manifest's `first_position`
+      // (snake_case) into this camelCase manifest; fail loudly instead of
+      // silently yielding `firstPosition: undefined` in ManifestInfo.
+      throw new ManifestError(
+        `checkpoint ${i} firstPosition must be a positive safe integer (got ${String(c.firstPosition)}; ` +
+          "did the producer copy snake_case 'first_position'?)",
+      );
+    }
+    return { query: c.query as string, firstPosition: c.firstPosition as number };
+  });
   if (typeof m.searchIndex !== "object" || m.searchIndex === null || typeof (m.searchIndex as Record<string, unknown>).kind !== "string") {
     throw new ManifestError("searchIndex.kind must be a string");
   }
@@ -158,7 +173,7 @@ export function validateManifest(value: unknown): WebDatasetManifest {
     baseUrl: m.baseUrl as string,
     filenameTemplate: m.filenameTemplate as string,
     chunks,
-    checkpoints: m.checkpoints as WebDatasetManifest["checkpoints"],
+    checkpoints,
     searchIndex: m.searchIndex as WebDatasetManifest["searchIndex"],
   };
 }

@@ -45,7 +45,7 @@ fn build_dataset(ascii: &[u8], chunk_digits: usize) -> Dataset {
     if data.len() % 2 == 1 {
         data.pop();
     }
-    let mut packed = Vec::new();
+    let mut chunk_vecs: Vec<Vec<u8>> = Vec::new();
     let mut chunks = Vec::new();
     let mut starts = vec![0u64];
     for block in data.chunks(chunk_digits) {
@@ -55,22 +55,23 @@ fn build_dataset(ascii: &[u8], chunk_digits: usize) -> Dataset {
             bytes: p.len() as u64,
             sha256: pi_core::manifest::sha256_hex(&p),
         });
-        packed.extend_from_slice(&p);
+        chunk_vecs.push(p);
         starts.push(starts.last().unwrap() + block.len() as u64);
     }
     starts.pop();
+    let concatenated: Vec<u8> = chunk_vecs.iter().flatten().copied().collect();
     let manifest = Manifest {
         format: FORMAT_ID.to_string(),
         total_digits: data.len() as u64,
         chunk_digits: chunk_digits as u64,
         first_digits: String::from_utf8(data[..data.len().min(64)].to_vec()).unwrap(),
         checkpoints: vec![],
-        sha256_packed: pi_core::manifest::sha256_hex(&packed),
+        sha256_packed: pi_core::manifest::sha256_hex(&concatenated),
         chunks,
     };
     manifest.validate().unwrap();
-    manifest.verify_packed(&packed).unwrap();
-    Dataset { manifest, packed, chunk_digit_starts: starts }
+    manifest.verify_packed(&concatenated).unwrap();
+    Dataset { manifest, chunks: chunk_vecs, chunk_digit_starts: starts }
 }
 
 /// ASCII digit bytes → 1..=10 (leaves 0 exclusive for the terminator).

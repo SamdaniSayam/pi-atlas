@@ -42,8 +42,8 @@ pub fn window_1based(
                 let take = (chunk_len - within).min(pos + even_count - cur);
                 let take_even = take - (take % 2);
                 if take_even > 0 {
-                    let base = (chunk_start / 2 + within / 2) as usize;
-                    crate::pack::unpack_into(&ds.packed[base..], 0, take_even, &mut out);
+                    let base = (within / 2) as usize;
+                    crate::pack::unpack_into(&ds.chunks[chunk_idx][base..], 0, take_even, &mut out);
                     cur += take_even;
                 }
                 if take > take_even {

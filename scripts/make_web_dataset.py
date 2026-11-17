@@ -17,7 +17,8 @@ Usage:
       --base-url dataset/1b/chunks/
 
 Output:
-  <output-dir>/web-manifest.json
+  <output-dir>/web-manifest.json    (camelCase browser manifest, Stage 2)
+  <output-dir>/core-manifest.json   (verbatim source manifest for the WASM PiEngine)
   <output-dir>/chunks/chunk_NNNNN.bin   (byte-identical copies)
 """
 import argparse
@@ -107,14 +108,23 @@ def main() -> int:
         "baseUrl": base,
         "filenameTemplate": "chunk_{index:05d}.bin",
         "chunks": chunks,
-        "checkpoints": m.get("checkpoints", []),
+        # The core manifest uses snake_case; the browser manifest is camelCase.
+        # Map explicitly so `firstPosition` is never undefined in ManifestInfo.
+        "checkpoints": [
+            {"query": c["query"], "firstPosition": c["first_position"]}
+            for c in m.get("checkpoints", [])
+        ],
         "searchIndex": {
             "kind": "none",
             "note": "No persistent index; full searches scan all chunks sequentially.",
         },
     }
     (out / "web-manifest.json").write_text(json.dumps(web_manifest, indent=2) + "\n")
+    # The WASM PiEngine consumes the core (snake_case) manifest verbatim — copy
+    # the verified source manifest so checksums are identical by construction.
+    (out / "core-manifest.json").write_text((src / "manifest.json").read_text())
     print(f"wrote {out / 'web-manifest.json'}: {len(chunks)} chunks, {packed_offset} packed bytes")
+    print(f"wrote {out / 'core-manifest.json'}")
     print(f"sha256_packed: {m['sha256_packed']}")
     return 0
 

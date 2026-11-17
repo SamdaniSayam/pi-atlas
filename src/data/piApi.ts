@@ -1,40 +1,39 @@
 /**
- * Typed client for the π Atlas search service (Rust, `service/`).
+ * Typed client for the π Atlas search engine.
  *
- * The browser never holds the dataset: searches run server-side as async jobs
- * (`POST /api/v1/jobs/*` → poll `/jobs/{id}`), and digit windows are fetched on
- * demand (`GET /api/v1/window`). All positions are 1-based decimal positions.
+ * Stage 7: the production transport is a LOCAL WASM engine running in a Web
+ * Worker, served as static files from GitHub Pages. No HTTP backend, no running
+ * API server and no paid service. This module keeps the exact exported types
+ * and function signatures of the former Rust-service client so every React
+ * component and Zustand store stays unchanged.
+ *
+ * The legacy HTTP path is retained ONLY under Vitest (`MODE === "test"`) so the
+ * existing integration tests that stub `fetch` at /api/v1 keep working. Vite
+ * statically replaces the mode constant, so the branch is dead-code-eliminated
+ * from production builds.
  */
+import { localBackend } from "./browser/localBackend";
 
-/**
- * API root resolution (first match wins):
- *   1. `window.__PI_ATLAS_API__`  — runtime override (self-hosted deployments)
- *   2. `import.meta.env.VITE_PI_ATLAS_API` — baked in at build time. This is
- *      public endpoint configuration, never a secret.
- *   3. same-origin `/api/v1` — local development and `vite preview`, proxied
- *      to the Rust search service.
- *
- * Values are used verbatim (minus trailing slashes), e.g.
- *   VITE_PI_ATLAS_API=https://pi-atlas-api.example.com/api/v1
- */
 declare global {
   interface Window {
     __PI_ATLAS_API__?: string;
   }
 }
 
-function resolveApiBase(): string {
+const USE_HTTP = import.meta.env.MODE === "test";
+
+function httpBase(): string {
   const runtime =
     typeof window !== "undefined" && typeof window.__PI_ATLAS_API__ === "string"
       ? window.__PI_ATLAS_API__.trim()
       : "";
   const baked =
     typeof import.meta.env?.VITE_PI_ATLAS_API === "string" ? import.meta.env.VITE_PI_ATLAS_API.trim() : "";
-  const root = runtime || baked || "/api/v1";
-  return root.replace(/\/+$/, "");
+  return (runtime || baked || "/api/v1").replace(/\/+$/, "");
 }
 
-export const API_BASE = resolveApiBase();
+/** @deprecated Local engine has no HTTP base URL; retained for compatibility. */
+export const API_BASE = USE_HTTP ? httpBase() : "/local";
 
 export class PiApiError extends Error {
   readonly code: string;
@@ -47,7 +46,7 @@ export class PiApiError extends Error {
   }
 }
 
-async function request<T>(
+async function httpRequest<T>(
   path: string,
   init?: { method?: string; body?: unknown; signal?: AbortSignal },
 ): Promise<T> {
@@ -68,7 +67,7 @@ async function request<T>(
   try {
     data = (await res.json()) as ErrorBody;
   } catch {
-    data = null; // non-JSON body (e.g. bare 404) — fall back to the status line
+    data = null;
   }
   if (!res.ok) {
     throw new PiApiError(
@@ -92,34 +91,39 @@ export interface ManifestInfo {
   sha256Packed: string;
 }
 
-/** GET /manifest — dataset identity, size and integrity metadata. */
 export async function fetchManifest(): Promise<ManifestInfo> {
-  const raw = await request<{
-    format: string;
-    total_digits: number;
-    chunk_digits: number;
-    chunk_count: number;
-    first_digits: string;
-    checkpoints: Array<{ query: string; first_position: number }>;
-    sha256_packed: string;
-  }>("/manifest");
-  return {
-    format: raw.format,
-    totalDigits: raw.total_digits,
-    chunkDigits: raw.chunk_digits,
-    chunkCount: raw.chunk_count,
-    firstDigits: raw.first_digits,
-    checkpoints: raw.checkpoints.map((c) => ({ query: c.query, firstPosition: c.first_position })),
-    sha256Packed: raw.sha256_packed,
-  };
+  if (USE_HTTP) {
+    const raw = await httpRequest<{
+      format: string;
+      total_digits: number;
+      chunk_digits: number;
+      chunk_count: number;
+      first_digits: string;
+      checkpoints: Array<{ query: string; first_position: number }>;
+      sha256_packed: string;
+    }>("/manifest");
+    return {
+      format: raw.format,
+      totalDigits: raw.total_digits,
+      chunkDigits: raw.chunk_digits,
+      chunkCount: raw.chunk_count,
+      firstDigits: raw.first_digits,
+      checkpoints: raw.checkpoints.map((c) => ({ query: c.query, firstPosition: c.first_position })),
+      sha256Packed: raw.sha256_packed,
+    };
+  }
+  await localBackend.init();
+  return localBackend.getManifestInfo();
 }
 
-/** GET /window?start=&end= — digits for 1-based inclusive [start, end]. */
 export async function fetchWindowDigits(start: number, end: number): Promise<string> {
-  const raw = await request<{ first_position: number; digits: string }>(
-    `/window?start=${start}&end=${end}`,
-  );
-  return raw.digits;
+  if (USE_HTTP) {
+    const raw = await httpRequest<{ first_position: number; digits: string }>(
+      `/window?start=${start}&end=${end}`,
+    );
+    return raw.digits;
+  }
+  return localBackend.fetchWindowDigits(start, end);
 }
 
 export interface DigitSample {
@@ -127,15 +131,18 @@ export interface DigitSample {
   digit: number;
 }
 
-/** GET /samples?count= — evenly spread representative digits. */
 export async function fetchSamples(count: number): Promise<{ totalDigits: number; samples: DigitSample[] }> {
-  const raw = await request<{ total_digits: number; samples: Array<{ position: number; digit: number }> }>(
-    `/samples?count=${count}`,
-  );
-  return {
-    totalDigits: raw.total_digits,
-    samples: raw.samples.map((s) => ({ position: s.position, digit: s.digit })),
-  };
+  if (USE_HTTP) {
+    const raw = await httpRequest<{ total_digits: number; samples: Array<{ position: number; digit: number }> }>(
+      `/samples?count=${count}`,
+    );
+    return {
+      totalDigits: raw.total_digits,
+      samples: raw.samples.map((s) => ({ position: s.position, digit: s.digit })),
+    };
+  }
+  const raw = await localBackend.fetchSamples(count);
+  return { totalDigits: raw.total_digits, samples: raw.samples };
 }
 
 export interface DigitStats {
@@ -144,10 +151,13 @@ export interface DigitStats {
   chiSquare: number;
 }
 
-/** GET /stats — digit counts + chi-square over the whole dataset (cached server-side). */
 export async function fetchStats(): Promise<DigitStats> {
-  const raw = await request<{ counts: number[]; total_digits: number; chi_square: number }>("/stats");
-  return { counts: raw.counts, totalDigits: raw.total_digits, chiSquare: raw.chi_square };
+  if (USE_HTTP) {
+    const raw = await httpRequest<{ counts: number[]; total_digits: number; chi_square: number }>("/stats");
+    return { counts: raw.counts, totalDigits: raw.total_digits, chiSquare: raw.chi_square };
+  }
+  // localBackend already returns the camelCase DigitStats shape via statsDto.
+  return localBackend.fetchStats();
 }
 
 /* ------------------------------ async jobs ------------------------------ */
@@ -164,7 +174,6 @@ export interface JobSnapshot<T> {
   elapsedMs: number;
 }
 
-/** One of the four search payloads (server returns the full result JSON). */
 export type SearchResult = ExactResult | LettersResult | DatesResult | PatternResult;
 
 export interface ExactResult {
@@ -232,7 +241,7 @@ export type SubmitResponse<T> =
   | { cached: true; result: T }
   | { cached: false; jobId: number };
 
-async function submit<T>(kind: string, body: unknown): Promise<SubmitResponse<T>> {
+async function httpSubmit<T>(kind: string, body: unknown): Promise<SubmitResponse<T>> {
   const res = await fetch(`${API_BASE}/jobs/${kind}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -245,19 +254,31 @@ async function submit<T>(kind: string, body: unknown): Promise<SubmitResponse<T>
     throw new PiApiError(res.status, data?.error?.code ?? "http_error", data?.error?.message ?? `Request failed (HTTP ${res.status}).`);
   }
   if (data?.cached) return { cached: true, result: data.result as T };
-  return { cached: false, jobId: data!.job_id! };
+  if (!data || typeof data.job_id !== "number" || !Number.isInteger(data.job_id)) {
+    throw new PiApiError(
+      res.status,
+      "malformed",
+      "Search service returned neither a cached result nor a valid job_id.",
+    );
+  }
+  return { cached: false, jobId: data.job_id };
 }
 
 export function submitExact(query: string, positionCap?: number) {
-  return submit<ExactResult>("exact", positionCap ? { query, position_cap: positionCap } : { query });
+  const body = positionCap ? { query, position_cap: positionCap } : { query };
+  return USE_HTTP ? httpSubmit<ExactResult>("exact", body) : localBackend.submit<ExactResult>("exact", body);
 }
 
 export function submitLetters(word: string) {
-  return submit<LettersResult>("letters", { word });
+  return USE_HTTP
+    ? httpSubmit<LettersResult>("letters", { word })
+    : localBackend.submit<LettersResult>("letters", { word });
 }
 
 export function submitDates(year: number, month: number, day: number) {
-  return submit<DatesResult>("dates", { year, month, day });
+  return USE_HTTP
+    ? httpSubmit<DatesResult>("dates", { year, month, day })
+    : localBackend.submit<DatesResult>("dates", { year, month, day });
 }
 
 export interface PatternSpecPayload {
@@ -270,47 +291,60 @@ export interface PatternSpecPayload {
 }
 
 export function submitPattern(spec: PatternSpecPayload) {
-  return submit<PatternResult>("pattern", spec);
+  return USE_HTTP
+    ? httpSubmit<PatternResult>("pattern", spec)
+    : localBackend.submit<PatternResult>("pattern", spec as unknown as Record<string, unknown>);
 }
 
-/** GET /jobs/{id} — latest snapshot (progress while running). */
 export async function fetchJob<T extends SearchResult = SearchResult>(
   id: number,
   signal?: AbortSignal,
 ): Promise<JobSnapshot<T>> {
-  const raw = await request<{
-    id: number;
-    kind: string;
-    status: JobStatus;
-    progress: { checked: number; total: number } | null;
-    result: T | null;
-    error: string | null;
-    elapsed_ms: number;
-  }>(`/jobs/${id}`, { signal });
-  return {
-    id: raw.id,
-    kind: raw.kind,
-    status: raw.status,
-    progress: raw.progress,
-    result: raw.result,
-    error: raw.error,
-    elapsedMs: raw.elapsed_ms,
-  };
+  if (USE_HTTP) {
+    const raw = await httpRequest<{
+      id: number;
+      kind: string;
+      status: JobStatus;
+      progress: { checked: number; total: number } | null;
+      result: T | null;
+      error: string | null;
+      elapsed_ms: number;
+    }>(`/jobs/${id}`, { signal });
+    return {
+      id: raw.id,
+      kind: raw.kind,
+      status: raw.status,
+      progress: raw.progress,
+      result: raw.result,
+      error: raw.error,
+      elapsedMs: raw.elapsed_ms,
+    };
+  }
+  return (await localBackend.fetchJob(id)) as JobSnapshot<T>;
 }
 
-/** POST /jobs/{id}/cancel — ask a running job to stop at its next chunk. */
 export async function cancelJob(id: number): Promise<void> {
-  await request(`/jobs/${id}/cancel`, { method: "POST", body: {} });
+  if (USE_HTTP) await httpRequest(`/jobs/${id}/cancel`, { method: "POST", body: {} });
+  else await localBackend.cancelJob(id);
 }
 
-/** DELETE /jobs/{id} — drop a finished job (and its cache entry) server-side. */
 export async function deleteJob(id: number): Promise<void> {
-  await request(`/jobs/${id}`, { method: "DELETE" });
+  if (USE_HTTP) await httpRequest(`/jobs/${id}`, { method: "DELETE" });
+  else await localBackend.deleteJob(id);
 }
+
+/** Storage helpers used by the Settings screen (browser-only app). */
+export const browserStorage = {
+  status: () => localBackend.storageStatus(),
+  clear: () => localBackend.clearCache(),
+};
 
 export interface PollOptions {
   signal?: AbortSignal;
+  /** Initial delay between job snapshots (default 50 ms). */
   intervalMs?: number;
+  /** Upper bound for the exponential backoff (default 400 ms). */
+  maxIntervalMs?: number;
   onProgress?: (checked: number, total: number) => void;
 }
 
@@ -321,12 +355,14 @@ export interface PollOutcome<T> {
   elapsedMs: number;
 }
 
-/** Poll a job until it leaves `running`. Throws PiApiError on transport/HTTP errors. */
 export async function pollJob<T extends SearchResult>(
   id: number,
   opts: PollOptions = {},
 ): Promise<PollOutcome<T>> {
-  const interval = opts.intervalMs ?? 100;
+  // Start responsive for short searches, then back off for long 1B scans so a
+  // slow job does not burn CPU polling hundreds of times per second.
+  let delay = opts.intervalMs ?? 50;
+  const maxDelay = opts.maxIntervalMs ?? 400;
   for (;;) {
     const snap = await fetchJob<T>(id, opts.signal);
     if (snap.status !== "running") {
@@ -338,6 +374,7 @@ export async function pollJob<T extends SearchResult>(
       };
     }
     if (snap.progress) opts.onProgress?.(snap.progress.checked, snap.progress.total);
-    await new Promise((r) => setTimeout(r, interval));
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(maxDelay, Math.ceil(delay * 1.5));
   }
 }

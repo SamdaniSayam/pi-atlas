@@ -125,7 +125,7 @@ pub fn search_letters(
         }
         let chunk_start = ds.chunk_digit_starts[c];
         let chunk_digits = ds.chunk_digits(c);
-        let packed_slice = &ds.packed[chunk_start as usize / 2..(chunk_start + chunk_digits) as usize / 2];
+        let packed_slice = ds.chunk_bytes(c);
 
         scratch.clear();
         crate::pack::unpack_into(packed_slice, 0, chunk_digits, &mut scratch);

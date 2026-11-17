@@ -7,10 +7,13 @@
 //!   chunks/chunk_00000.bin ... chunk_NNNNN.bin
 //! ```
 //! Every chunk's SHA-256 is verified during load; the whole-file SHA-256 is
-//! verified after concatenation.
+//! verified by streaming each chunk into a Sha256 hasher. No concatenated copy
+//! of the dataset is ever allocated — for the 1B set that would double peak RSS
+//! to >1 GB and trip the systemd `MemoryMax=1G` limit.
 
 use crate::manifest::{Manifest, FORMAT_ID};
 use crate::{CoreError, Dataset};
+use sha2::{Digest, Sha256};
 use std::path::Path;
 
 pub fn load_manifest(data_dir: &Path) -> Result<Manifest, CoreError> {
@@ -29,9 +32,11 @@ pub fn load_dataset(data_dir: &Path) -> Result<Dataset, CoreError> {
         return Err(CoreError::Manifest(format!("unsupported format {}", manifest.format)));
     }
     let chunks_dir = data_dir.join("chunks");
-    let mut packed = Vec::with_capacity(
-        manifest.chunks.iter().map(|c| c.bytes as usize).sum::<usize>(),
-    );
+    let mut chunk_vecs: Vec<Vec<u8>> = Vec::with_capacity(manifest.chunks.len());
+    // Stream the whole-file hash while reading. The previous implementation
+    // collected a second ~500 MB `concatenated` buffer purely to hash it,
+    // making the 1B dataset impossible to load under a 1 GB memory cap.
+    let mut whole_hasher = Sha256::new();
     for (i, meta) in manifest.chunks.iter().enumerate() {
         let path = chunks_dir.join(format!("chunk_{i:05}.bin"));
         let bytes = std::fs::read(&path)
@@ -50,9 +55,16 @@ pub fn load_dataset(data_dir: &Path) -> Result<Dataset, CoreError> {
                 meta.sha256
             )));
         }
-        packed.extend_from_slice(&bytes);
+        whole_hasher.update(&bytes);
+        chunk_vecs.push(bytes);
     }
-    manifest.verify_packed(&packed)?;
+    let whole_hex = format!("{:x}", whole_hasher.finalize());
+    if whole_hex != manifest.sha256_packed {
+        return Err(CoreError::Checksum(format!(
+            "whole-file sha256 mismatch (expected {}, got {whole_hex})",
+            manifest.sha256_packed
+        )));
+    }
 
     let mut chunk_digit_starts = Vec::with_capacity(manifest.chunks.len());
     let mut acc = 0u64;
@@ -60,7 +72,7 @@ pub fn load_dataset(data_dir: &Path) -> Result<Dataset, CoreError> {
         chunk_digit_starts.push(acc);
         acc += meta.digits;
     }
-    Ok(Dataset { manifest, packed, chunk_digit_starts })
+    Ok(Dataset { manifest, chunks: chunk_vecs, chunk_digit_starts })
 }
 
 #[cfg(test)]
