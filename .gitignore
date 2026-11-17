@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.npm/
+npm-debug.log*
+
+# Frontend build output
+dist/
+.vite/
+
+# Rust build output (can be ~1 GB locally)
+service/target/
+
+# Test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+coverage/
+
+# Environment files and credentials — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+id_rsa*
+
+# Logs
+*.log
+logs/
+
+# Local datasets and generated indexes — the 1B pack is ~477 MB and stays
+# outside Git. public/pi-2m.txt (the 2 MB parity fixture) IS committed.
+data/
+data-*/
+pi-atlas-1b/
+*.pack
+*.mmap
+*.bin
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+
+# TypeScript incremental build cache
+*.tsbuildinfo

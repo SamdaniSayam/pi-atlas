@@ -1,0 +1,39 @@
+[Unit]
+Description=π Atlas search service
+Documentation=https://github.com/SamdaniSayam/pi-atlas
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=piatlas
+Group=piatlas
+
+# Bind to loopback only: Caddy is the sole public entry point.
+Environment=PI_ATLAS_ADDR=127.0.0.1:7787
+Environment=PI_ATLAS_DATA=/srv/pi-atlas/data-1b
+# Replace with the exact GitHub Pages origin (and any explicitly allowed dev origins).
+Environment=PI_ATLAS_CORS_ORIGINS=https://samdanisayam.github.io
+Environment=PI_ATLAS_MAX_CONCURRENT=4
+Environment=PI_ATLAS_TIMEOUT_SECS=300
+
+ExecStart=/usr/local/bin/pi-server
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+WorkingDirectory=/srv/pi-atlas
+
+# Hardening: read-only filesystem except /run, no privilege escalation.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

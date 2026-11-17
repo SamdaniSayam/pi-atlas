@@ -1,0 +1,21 @@
+# Caddy terminates HTTPS and reverse-proxies the API. The frontend is served
+# from GitHub Pages; replace pi-atlas.example.com with your API hostname.
+# Caddy automatically obtains and renews a Let's Encrypt certificate.
+pi-atlas.example.com {
+    encode zstd gzip
+
+    # Only the API is exposed publicly. No dev ports are forwarded.
+    handle /api/* {
+        reverse_proxy 127.0.0.1:7787
+    }
+
+    handle {
+        respond "π Atlas API — see https://samdanisayam.github.io/pi-atlas/" 404
+    }
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Robots-Tag noindex
+    }
+}

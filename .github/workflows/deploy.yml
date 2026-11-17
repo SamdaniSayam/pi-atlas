@@ -1,0 +1,88 @@
+name: Verify and deploy frontend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: read the repo, mint a Pages token, deploy to Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: service
+
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+
+      # Regenerate the 2M parity pack from the committed fixture — the real
+      # 1B dataset and its indexes are never in Git or CI.
+      - name: Regenerate 2M test dataset
+        run: python3 scripts/pack_dataset.py public/pi-2m.txt /tmp/pi-atlas-e2e-data
+      - name: Build search service
+        run: cargo build --release --locked -p pi-server
+        working-directory: service
+
+      - name: Build frontend
+        env:
+          # Public API endpoint (not a secret). Set it in repo Variables as
+          # PI_ATLAS_API_URL, e.g. https://pi-atlas.example.com/api/v1.
+          # Unset → same-origin /api/v1, which only works alongside a proxy.
+          VITE_PI_ATLAS_API: ${{ vars.PI_ATLAS_API_URL }}
+        run: npm run build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npx playwright install --with-deps chromium
+
+      - name: E2E against real Rust service (alternate ports)
+        env:
+          PI_ATLAS_E2E_PREVIEW_PORT: 4175
+          PI_ATLAS_E2E_API_PORT: 7788
+          PI_ATLAS_E2E_DATA: /tmp/pi-atlas-e2e-data
+          PI_ATLAS_E2E_SERVER_BIN: ${{ github.workspace }}/service/target/release/pi-server
+          PI_ATLAS_API: http://127.0.0.1:7788
+        run: npm run test:e2e
+
+      - name: No localhost references in production bundle
+        run: |
+          if grep -R -E 'localhost|127\.0\.0\.1' dist --include='*.js' --include='*.html' --include='*.css'; then
+            echo 'ERROR: production bundle references localhost'; exit 1
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
