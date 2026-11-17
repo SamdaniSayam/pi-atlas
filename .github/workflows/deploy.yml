@@ -41,6 +41,9 @@ jobs:
       - name: Unit + integration tests (96 tests)
         run: npm test
 
+      - name: Install π verifier dependency
+        run: python3 -m pip install --disable-pip-version-check mpmath==1.4.1
+
       - name: Verify committed 2M π fixture
         run: npm run verify:pi
 
