@@ -1,0 +1,925 @@
+{
+  "version": 1,
+  "format": "pi-atlas-packed-v1",
+  "datasetId": "pi-1b-2026",
+  "totalDigits": 1000000000,
+  "chunkDigits": 10000000,
+  "chunkCount": 100,
+  "packedBytes": 500000000,
+  "firstDigits": "1415926535897932384626433832795028841971693993751058209749445923",
+  "sha256Packed": "054944fdbab4a1d839b0afa808955c126c0ee35b794d4181b027b973f7610911",
+  "baseUrl": "chunks/",
+  "filenameTemplate": "chunk_{index:05d}.bin",
+  "chunks": [
+    {
+      "index": 0,
+      "file": "chunk_00000.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 0,
+      "digitOffset": 0,
+      "sha256": "8e919fc72b411fa8caf1770d89573852cf43e0951bfd72c6959943665fb60f49"
+    },
+    {
+      "index": 1,
+      "file": "chunk_00001.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 5000000,
+      "digitOffset": 10000000,
+      "sha256": "932f71d7c980b5237a73992273be665b348bd4614b63127c0e2190b182f56ee5"
+    },
+    {
+      "index": 2,
+      "file": "chunk_00002.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 10000000,
+      "digitOffset": 20000000,
+      "sha256": "923277b1c21a0704fc3eb9422c85bfb1010effd7ae9c2e5121090cffb7ad82e9"
+    },
+    {
+      "index": 3,
+      "file": "chunk_00003.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 15000000,
+      "digitOffset": 30000000,
+      "sha256": "e2e7ed17c6197c460f23f1c58fe7dde90f84d93ab9b009338eda6442039fc95f"
+    },
+    {
+      "index": 4,
+      "file": "chunk_00004.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 20000000,
+      "digitOffset": 40000000,
+      "sha256": "a7bcaaa5854b8ab58fe7840bfd4ef239b186830627811947cc269b67926ee262"
+    },
+    {
+      "index": 5,
+      "file": "chunk_00005.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 25000000,
+      "digitOffset": 50000000,
+      "sha256": "c7bc0d8738ea7152c200ed81e66fd9a951eb9784a4b448bcedd2ac793bdb556e"
+    },
+    {
+      "index": 6,
+      "file": "chunk_00006.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 30000000,
+      "digitOffset": 60000000,
+      "sha256": "1e700587d8a2034009e8eb903566546a229a34271b9391074f26a8215f91abfd"
+    },
+    {
+      "index": 7,
+      "file": "chunk_00007.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 35000000,
+      "digitOffset": 70000000,
+      "sha256": "2e88e6cfddab624b6f4060768052732775ee060c2209d85b3e253e38dedcff25"
+    },
+    {
+      "index": 8,
+      "file": "chunk_00008.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 40000000,
+      "digitOffset": 80000000,
+      "sha256": "d9bc073387519dc0001ee7dc8153edbc0d39653e6cbe304f483dc4946ee97728"
+    },
+    {
+      "index": 9,
+      "file": "chunk_00009.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 45000000,
+      "digitOffset": 90000000,
+      "sha256": "bfceaa1f14e5214e1a10188f1a1355b499412514a9774e67d8b3c6d86b8dd8ff"
+    },
+    {
+      "index": 10,
+      "file": "chunk_00010.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 50000000,
+      "digitOffset": 100000000,
+      "sha256": "9670e82b12c9959e849c3c5b52d085aded80836433d8b17c7fa834ccd31e7a3c"
+    },
+    {
+      "index": 11,
+      "file": "chunk_00011.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 55000000,
+      "digitOffset": 110000000,
+      "sha256": "6dcedd4abe2c295c29db4842d7623ee06abf782f4262b7f6ad597d853828b722"
+    },
+    {
+      "index": 12,
+      "file": "chunk_00012.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 60000000,
+      "digitOffset": 120000000,
+      "sha256": "786154495ead85cb733ddf07e502358744783f197f486c25ad449ba422be3f38"
+    },
+    {
+      "index": 13,
+      "file": "chunk_00013.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 65000000,
+      "digitOffset": 130000000,
+      "sha256": "33d3211d5bbfe17d419d2d99d3e2bfd1dd47a8aafe24bd9fac4094d82a24eb59"
+    },
+    {
+      "index": 14,
+      "file": "chunk_00014.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 70000000,
+      "digitOffset": 140000000,
+      "sha256": "9e4552f0a6b6568c56943d759ddb6426fa6529db21088663d3bfa14805ac3b4c"
+    },
+    {
+      "index": 15,
+      "file": "chunk_00015.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 75000000,
+      "digitOffset": 150000000,
+      "sha256": "08799576774624642d28d326a62c4bc7330b4cfa86428a389b248195b6c58f39"
+    },
+    {
+      "index": 16,
+      "file": "chunk_00016.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 80000000,
+      "digitOffset": 160000000,
+      "sha256": "0ecae8d66ecb9d2a719adedc41f6fb3e757d7cdc09adb445b5c29c32494f6236"
+    },
+    {
+      "index": 17,
+      "file": "chunk_00017.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 85000000,
+      "digitOffset": 170000000,
+      "sha256": "ea1936ae8a383ce22be79fed0b91adff7f0a3abd4dc8c52e7a85f5a9d5e1365b"
+    },
+    {
+      "index": 18,
+      "file": "chunk_00018.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 90000000,
+      "digitOffset": 180000000,
+      "sha256": "d49ce658b76c21f1929a8bff5616488a1ac700964ab86203e8c3dd034ebffcfd"
+    },
+    {
+      "index": 19,
+      "file": "chunk_00019.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 95000000,
+      "digitOffset": 190000000,
+      "sha256": "17c03b52ad258b488ee9971de9097655a363583b28b120c096912191a48e67dd"
+    },
+    {
+      "index": 20,
+      "file": "chunk_00020.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 100000000,
+      "digitOffset": 200000000,
+      "sha256": "e5c6d60838818802d5c26eece5fee965ad032ef3e1c93d26360e3478c7467eb4"
+    },
+    {
+      "index": 21,
+      "file": "chunk_00021.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 105000000,
+      "digitOffset": 210000000,
+      "sha256": "aa0160138a99c2fcf991e93375e97add2891fc86ef6819641e4beccaa592af1e"
+    },
+    {
+      "index": 22,
+      "file": "chunk_00022.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 110000000,
+      "digitOffset": 220000000,
+      "sha256": "b5f692c76ae009aca81c950a97db255f5070642d13ac5f1c6efaab855289c00c"
+    },
+    {
+      "index": 23,
+      "file": "chunk_00023.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 115000000,
+      "digitOffset": 230000000,
+      "sha256": "9687c50491933c70b1947044dd40bb5193c190c24f87edb2d0eb87e663e1fed2"
+    },
+    {
+      "index": 24,
+      "file": "chunk_00024.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 120000000,
+      "digitOffset": 240000000,
+      "sha256": "36daed7a7f297af16b6cef8c789f93deef652a2f5a410b96aaf687a44ac2c277"
+    },
+    {
+      "index": 25,
+      "file": "chunk_00025.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 125000000,
+      "digitOffset": 250000000,
+      "sha256": "1da50b9cab18da98d4e9f5e1ff5533abf14f6aa87c37a4e8347952ac052f476f"
+    },
+    {
+      "index": 26,
+      "file": "chunk_00026.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 130000000,
+      "digitOffset": 260000000,
+      "sha256": "ef1a7b7b9929d536431e8be85872a16327a645444ef2d5d6e29a1ef8c79d888a"
+    },
+    {
+      "index": 27,
+      "file": "chunk_00027.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 135000000,
+      "digitOffset": 270000000,
+      "sha256": "b4746b54235264414a500bb6f83efa7f9f23b3e6b62e852be2a3da78e5212fe6"
+    },
+    {
+      "index": 28,
+      "file": "chunk_00028.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 140000000,
+      "digitOffset": 280000000,
+      "sha256": "f887d6628b4b8224c98c55e8ad6c6b3c65c1cf5a9f9ff7e6a282f2df1b7b9f9f"
+    },
+    {
+      "index": 29,
+      "file": "chunk_00029.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 145000000,
+      "digitOffset": 290000000,
+      "sha256": "9469dcac04a15d486755f4b08a9f466289b49017921d29fc88ed485939122851"
+    },
+    {
+      "index": 30,
+      "file": "chunk_00030.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 150000000,
+      "digitOffset": 300000000,
+      "sha256": "da31be5bde33d5ab9e0d9621634495a0d0118551030a27b4927e45267e0dd925"
+    },
+    {
+      "index": 31,
+      "file": "chunk_00031.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 155000000,
+      "digitOffset": 310000000,
+      "sha256": "358b6e35f3f85fc6122fd2cd3e39848992eb0a3b2121cba1f404dc350ff364bb"
+    },
+    {
+      "index": 32,
+      "file": "chunk_00032.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 160000000,
+      "digitOffset": 320000000,
+      "sha256": "c7c9ce4d1b52b404951235c8782cc9f36affd6d78e66cf252d674449b0b546c7"
+    },
+    {
+      "index": 33,
+      "file": "chunk_00033.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 165000000,
+      "digitOffset": 330000000,
+      "sha256": "7c41f333c6e844b23c4675c968ce6829ea2f57cda1c64fa5a4819b922bd1957f"
+    },
+    {
+      "index": 34,
+      "file": "chunk_00034.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 170000000,
+      "digitOffset": 340000000,
+      "sha256": "03621a365fcbd6d6c114498af8524775ac32a51a308d1ceb8b7bcbfd589d7bec"
+    },
+    {
+      "index": 35,
+      "file": "chunk_00035.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 175000000,
+      "digitOffset": 350000000,
+      "sha256": "12e3c83295ce5b10eef621725edc932390419a52d6e767544bff1c39ba50868b"
+    },
+    {
+      "index": 36,
+      "file": "chunk_00036.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 180000000,
+      "digitOffset": 360000000,
+      "sha256": "a1ec4668767282ce6a793168b1f081dfa5aa0810729570bc6bbde613adc3f5d4"
+    },
+    {
+      "index": 37,
+      "file": "chunk_00037.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 185000000,
+      "digitOffset": 370000000,
+      "sha256": "7667901980732d754ccfb387960a81d83cea992926126e224f72a4a57730b2fa"
+    },
+    {
+      "index": 38,
+      "file": "chunk_00038.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 190000000,
+      "digitOffset": 380000000,
+      "sha256": "58ceef169a998aff5b9169df30db377e25c8f85b798f6ab68e366199cf8152d6"
+    },
+    {
+      "index": 39,
+      "file": "chunk_00039.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 195000000,
+      "digitOffset": 390000000,
+      "sha256": "6bf4941d59f92b4eb98bf4191a7f6510f854c694935f7b4d1274c7de7bc7b8d2"
+    },
+    {
+      "index": 40,
+      "file": "chunk_00040.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 200000000,
+      "digitOffset": 400000000,
+      "sha256": "97758397c35b07e9658fae533e4f48122e448bb769b085bcffacf0ae4372c9a0"
+    },
+    {
+      "index": 41,
+      "file": "chunk_00041.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 205000000,
+      "digitOffset": 410000000,
+      "sha256": "b1ea560de69ba087f23cc5f8c50b9ffafa5a0db5d0b6928d968713d13fc6634e"
+    },
+    {
+      "index": 42,
+      "file": "chunk_00042.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 210000000,
+      "digitOffset": 420000000,
+      "sha256": "f93776fab0d3b2e4f079773e0b27e6c803167d33cdf46f729639afe25c50034b"
+    },
+    {
+      "index": 43,
+      "file": "chunk_00043.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 215000000,
+      "digitOffset": 430000000,
+      "sha256": "7f23fa1933b375beaffe509196b459c483453c7e8e665441fe95bbbfa0aa8530"
+    },
+    {
+      "index": 44,
+      "file": "chunk_00044.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 220000000,
+      "digitOffset": 440000000,
+      "sha256": "9fedb625750368e3e5942fd2ba9e2dfeaaf369ed2f41a7304bc8d9a2472db867"
+    },
+    {
+      "index": 45,
+      "file": "chunk_00045.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 225000000,
+      "digitOffset": 450000000,
+      "sha256": "e937d030bacb2a011e02f81ef48c1a166ab604fb9fa6ea26a6338b2ba879a010"
+    },
+    {
+      "index": 46,
+      "file": "chunk_00046.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 230000000,
+      "digitOffset": 460000000,
+      "sha256": "a0c84404e0243fcc1733a8e06caaaf7c2a0ad53edb16f9cf5b7bc89c6eabf5c3"
+    },
+    {
+      "index": 47,
+      "file": "chunk_00047.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 235000000,
+      "digitOffset": 470000000,
+      "sha256": "fcd8ac68896c125c19693af34d2b459fb10c984b6caea3ca8e4f3e6102e6acc6"
+    },
+    {
+      "index": 48,
+      "file": "chunk_00048.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 240000000,
+      "digitOffset": 480000000,
+      "sha256": "0b31c95339ef1e74cd3331119f88de3379d1782057c2b5ebd4d7b27d88930874"
+    },
+    {
+      "index": 49,
+      "file": "chunk_00049.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 245000000,
+      "digitOffset": 490000000,
+      "sha256": "0af461fa5ce54122d26d2cc5a20e5058f846b736e6d1fb5b47bbbd65c3297405"
+    },
+    {
+      "index": 50,
+      "file": "chunk_00050.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 250000000,
+      "digitOffset": 500000000,
+      "sha256": "9251bb8706bdc2ad201479159912d60dbc9708312534a83beb0404492e2083c8"
+    },
+    {
+      "index": 51,
+      "file": "chunk_00051.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 255000000,
+      "digitOffset": 510000000,
+      "sha256": "63f90d5ce664ca32b2584c5cb83ce4836d6dcdb0069667fdfbcdfde9d4205139"
+    },
+    {
+      "index": 52,
+      "file": "chunk_00052.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 260000000,
+      "digitOffset": 520000000,
+      "sha256": "541baf56133221653f13885d3e503abd97bc338684e19d8bf5ce67625129cd72"
+    },
+    {
+      "index": 53,
+      "file": "chunk_00053.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 265000000,
+      "digitOffset": 530000000,
+      "sha256": "fd5950b695bca389f9a726b98e765f94ea6f15c2a6b862828c0fdd61a368d8b4"
+    },
+    {
+      "index": 54,
+      "file": "chunk_00054.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 270000000,
+      "digitOffset": 540000000,
+      "sha256": "25e7cf52ef076107e68b06fc630e04adf23bceda38f04d3d8a009a4331d6026e"
+    },
+    {
+      "index": 55,
+      "file": "chunk_00055.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 275000000,
+      "digitOffset": 550000000,
+      "sha256": "b38624a12ae738e7efb7c8515eabf3563106d031307aecdaa1a211906fabb382"
+    },
+    {
+      "index": 56,
+      "file": "chunk_00056.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 280000000,
+      "digitOffset": 560000000,
+      "sha256": "c376b21e50e402c2296dabdb1002f9471a0e888a0b7fa0eaacc15b4351e6f144"
+    },
+    {
+      "index": 57,
+      "file": "chunk_00057.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 285000000,
+      "digitOffset": 570000000,
+      "sha256": "d079c429e14eb0f6af13f5ea2ccb9db5c470a991a13958bd59cf9aae6c137f27"
+    },
+    {
+      "index": 58,
+      "file": "chunk_00058.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 290000000,
+      "digitOffset": 580000000,
+      "sha256": "7dd57c813a2caa11bb50a8625d7d9b3384ddec633c9050580e4853deffae98e6"
+    },
+    {
+      "index": 59,
+      "file": "chunk_00059.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 295000000,
+      "digitOffset": 590000000,
+      "sha256": "8824b6db392e30109f774994d8d59b7342595394218bbc4a841d4ccd907b1873"
+    },
+    {
+      "index": 60,
+      "file": "chunk_00060.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 300000000,
+      "digitOffset": 600000000,
+      "sha256": "fa5c06ff6e751e9c7cbcd3a040238b478be7d176e579b18194f9a6945c1efaf5"
+    },
+    {
+      "index": 61,
+      "file": "chunk_00061.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 305000000,
+      "digitOffset": 610000000,
+      "sha256": "068e61103c10101997338bdeebff1c907674e41739f45271e9a2e04911461e95"
+    },
+    {
+      "index": 62,
+      "file": "chunk_00062.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 310000000,
+      "digitOffset": 620000000,
+      "sha256": "30196cef72a096cf2d4cc9ce2e9aa5b07d4bdc1ac24599b4bc3be47f780a736c"
+    },
+    {
+      "index": 63,
+      "file": "chunk_00063.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 315000000,
+      "digitOffset": 630000000,
+      "sha256": "b32dd8d450268f1e1a4404b286c1c47d00bf05bf8ac6179f5c8880788a841e1a"
+    },
+    {
+      "index": 64,
+      "file": "chunk_00064.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 320000000,
+      "digitOffset": 640000000,
+      "sha256": "847bfbbd82636d7deaaa6aaf0522e8791b9011c9e09ecc38008931ee2574cf62"
+    },
+    {
+      "index": 65,
+      "file": "chunk_00065.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 325000000,
+      "digitOffset": 650000000,
+      "sha256": "bed3d8d94c0c9662d24441aa52d69e992a55638b6234eaf9289bc56db26b1ea9"
+    },
+    {
+      "index": 66,
+      "file": "chunk_00066.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 330000000,
+      "digitOffset": 660000000,
+      "sha256": "fccdff8f373ce1d342028697888579434e9722686cbb26542fc6044eebf648bc"
+    },
+    {
+      "index": 67,
+      "file": "chunk_00067.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 335000000,
+      "digitOffset": 670000000,
+      "sha256": "41673ea7d374a830762709b5fbbcd229c4d308a70264f09fb071851003d03580"
+    },
+    {
+      "index": 68,
+      "file": "chunk_00068.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 340000000,
+      "digitOffset": 680000000,
+      "sha256": "ad27b07c3f2b7d65149bdfaafbba1e43d58552d60050c03dd6a4f28f4ac9e820"
+    },
+    {
+      "index": 69,
+      "file": "chunk_00069.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 345000000,
+      "digitOffset": 690000000,
+      "sha256": "f4bb97eb5c00220d391a0db171d9d499e8f0c4141db2d3f6d8d63d9eaa4ca5bb"
+    },
+    {
+      "index": 70,
+      "file": "chunk_00070.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 350000000,
+      "digitOffset": 700000000,
+      "sha256": "4cdd37759b0fd83c19a46faadc6194cfc1367c46cf1cb85922b3fa56e2bae881"
+    },
+    {
+      "index": 71,
+      "file": "chunk_00071.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 355000000,
+      "digitOffset": 710000000,
+      "sha256": "3c12d346b57761545052af7c4c5ccf0e65510ad990703fcd04b6a2bab8265118"
+    },
+    {
+      "index": 72,
+      "file": "chunk_00072.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 360000000,
+      "digitOffset": 720000000,
+      "sha256": "fe9f5b35aac834d50af6cfe5c28c0fa6a580ed51e2d0da7a4c6b68fa994e442c"
+    },
+    {
+      "index": 73,
+      "file": "chunk_00073.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 365000000,
+      "digitOffset": 730000000,
+      "sha256": "793c89e745addece9b447683ea32e786573ecb5ac227e17361bb06398cc6945e"
+    },
+    {
+      "index": 74,
+      "file": "chunk_00074.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 370000000,
+      "digitOffset": 740000000,
+      "sha256": "a99b609a98e3dba15aa73732af2872ce8bbedda06febdfc9cd53846c8cbd6261"
+    },
+    {
+      "index": 75,
+      "file": "chunk_00075.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 375000000,
+      "digitOffset": 750000000,
+      "sha256": "e18d55abacc59ab620a6a3150847adfecda6450f9eb770d250f6b7002e809248"
+    },
+    {
+      "index": 76,
+      "file": "chunk_00076.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 380000000,
+      "digitOffset": 760000000,
+      "sha256": "13d215c7f2fbab8ba229686efc46a1b1572d89d60d65299eb260f8f65f7bd6c7"
+    },
+    {
+      "index": 77,
+      "file": "chunk_00077.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 385000000,
+      "digitOffset": 770000000,
+      "sha256": "7219eea828d5bf9febf66a919ec9e290bcd7cdb13123bae8819463e36b4253dc"
+    },
+    {
+      "index": 78,
+      "file": "chunk_00078.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 390000000,
+      "digitOffset": 780000000,
+      "sha256": "7a1085a29af6ed85192d85c6f47231d6c8d10b5528f5d335ed7f514cdcce8210"
+    },
+    {
+      "index": 79,
+      "file": "chunk_00079.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 395000000,
+      "digitOffset": 790000000,
+      "sha256": "616d2b11cec8f51b8cf530ceb27c168107ff224238e8fc53ae5114fe9bc1d607"
+    },
+    {
+      "index": 80,
+      "file": "chunk_00080.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 400000000,
+      "digitOffset": 800000000,
+      "sha256": "3f1f5c43409a83999f199d0643760ec49d9179df206482e392eefeba62e11fc7"
+    },
+    {
+      "index": 81,
+      "file": "chunk_00081.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 405000000,
+      "digitOffset": 810000000,
+      "sha256": "f45d82fd9675664512a8442397decb02a793342b45b93d1ba600ca0ad1352a2a"
+    },
+    {
+      "index": 82,
+      "file": "chunk_00082.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 410000000,
+      "digitOffset": 820000000,
+      "sha256": "ae0f8ef0792b081ee2eaaa31b23cfb922c76fd0020d88188d711bf6c7ea61495"
+    },
+    {
+      "index": 83,
+      "file": "chunk_00083.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 415000000,
+      "digitOffset": 830000000,
+      "sha256": "b01e6014d3bff9e0c1d2b3d77636584fddd95314d612cdc0dbb05aa21a1c59c2"
+    },
+    {
+      "index": 84,
+      "file": "chunk_00084.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 420000000,
+      "digitOffset": 840000000,
+      "sha256": "ba41743a957c24005ef29c072690e68b63462c754b8c9eed3f0e69389148f51e"
+    },
+    {
+      "index": 85,
+      "file": "chunk_00085.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 425000000,
+      "digitOffset": 850000000,
+      "sha256": "99e7d82575b7631ee0176473493156ad0e0c7f3b3dfeee55da03131c36fde4ca"
+    },
+    {
+      "index": 86,
+      "file": "chunk_00086.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 430000000,
+      "digitOffset": 860000000,
+      "sha256": "38c364beaf9dcf02a0dd0fe47f250270c49ce85df7dc9f4c7980d57340bbcd53"
+    },
+    {
+      "index": 87,
+      "file": "chunk_00087.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 435000000,
+      "digitOffset": 870000000,
+      "sha256": "263cf5f862c5ca4f0597672237809a5758cdd0b6dd828381e6eb75f92ccb24e2"
+    },
+    {
+      "index": 88,
+      "file": "chunk_00088.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 440000000,
+      "digitOffset": 880000000,
+      "sha256": "3f770f653e60e1d7c95a97b533cb54b49a273f40d56a710b03981f3c2855ce16"
+    },
+    {
+      "index": 89,
+      "file": "chunk_00089.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 445000000,
+      "digitOffset": 890000000,
+      "sha256": "8d1bfec76fd7a05185f704a252eb9b14bd4dab3461b323d2610a8794350cdfe5"
+    },
+    {
+      "index": 90,
+      "file": "chunk_00090.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 450000000,
+      "digitOffset": 900000000,
+      "sha256": "ab5accb101bdb9d1bffdd5f6e698f1ff01a38b349840483abd519969fcbdc34c"
+    },
+    {
+      "index": 91,
+      "file": "chunk_00091.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 455000000,
+      "digitOffset": 910000000,
+      "sha256": "3dcccafbc415054938c6f81e5bdba2e51dba518503785d3474dcff6c33ef546a"
+    },
+    {
+      "index": 92,
+      "file": "chunk_00092.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 460000000,
+      "digitOffset": 920000000,
+      "sha256": "eb795ca58a34ab2f7ffd63f9fa81915bd507a8c9209c198c714513a8fd231478"
+    },
+    {
+      "index": 93,
+      "file": "chunk_00093.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 465000000,
+      "digitOffset": 930000000,
+      "sha256": "6c1fe7bdcdcd9cfc49dcd2008731efc040e002f4ddc98ce8ca7ddc482869befd"
+    },
+    {
+      "index": 94,
+      "file": "chunk_00094.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 470000000,
+      "digitOffset": 940000000,
+      "sha256": "5d8acf297e5eae65bfbf9e878ee398d7236bf6b76830d0daa57e5830043d3662"
+    },
+    {
+      "index": 95,
+      "file": "chunk_00095.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 475000000,
+      "digitOffset": 950000000,
+      "sha256": "bd1362d7880b3e70a3b40061d177bb7da17a0c60699fe78ea311579eb3ee002b"
+    },
+    {
+      "index": 96,
+      "file": "chunk_00096.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 480000000,
+      "digitOffset": 960000000,
+      "sha256": "7965b5eef3bceae3a9d80af8f529412ab668c9e28eb935d5b9b9142f61d66a38"
+    },
+    {
+      "index": 97,
+      "file": "chunk_00097.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 485000000,
+      "digitOffset": 970000000,
+      "sha256": "2c84727b470c012413c70ac21854c0f490f24820a4ef490d867b324d846ba884"
+    },
+    {
+      "index": 98,
+      "file": "chunk_00098.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 490000000,
+      "digitOffset": 980000000,
+      "sha256": "6b5b3667eb1adfa958739bba4c0454b1277c371e95af546862ea826e470437e1"
+    },
+    {
+      "index": 99,
+      "file": "chunk_00099.bin",
+      "digits": 10000000,
+      "bytes": 5000000,
+      "packedOffset": 495000000,
+      "digitOffset": 990000000,
+      "sha256": "26f24d2cdd47712c24f613311c2371769a33a174c9a68472442c25f28111be90"
+    }
+  ],
+  "checkpoints": [
+    {
+      "query": "12",
+      "firstPosition": 148
+    }
+  ],
+  "searchIndex": {
+    "kind": "none",
+    "note": "No persistent index; full searches scan all chunks sequentially."
+  }
+}

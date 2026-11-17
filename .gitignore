@@ -5,6 +5,7 @@ npm-debug.log*
 
 # Frontend build output
 dist/
+dist-deploy/
 .vite/
 
 # Rust build output (can be ~1 GB locally)
@@ -39,9 +40,11 @@ pi-atlas-1b/
 *.pack
 *.mmap
 *.bin
-# Exception: the committed 2M browser dataset is only ~1 MB and MUST ship in
-# the Pages artifact/CI checkout. The 477 MB 1B pack stays ignored above.
+# Exceptions: both browser datasets MUST ship in the Pages artifact/CI checkout.
+# 2M is ~1 MB; the verified 1B static tree is ~478 MiB (100 x 5 MB chunks, each
+# under GitHub's 100 MB/file limit) and is the full dataset served in production.
 !public/data/pi-2m/chunks/*.bin
+!public/data/pi-1b/chunks/*.bin
 
 # OS / editor cruft
 .DS_Store

@@ -47,28 +47,42 @@ jobs:
       - name: Verify committed 2M π fixture
         run: npm run verify:pi
 
-      - name: Build browser-only frontend
+      # Verification/E2E always use the small 2M fixture: its assertions are
+      # dataset-specific (e.g. "12" -> position 148, 1 / 19,800 occurrences).
+      - name: Build verification frontend (2M)
         env:
           # Pages serves from https://<user>.github.io/<repo>/ — relative URLs.
           VITE_BASE_PATH: ./
-          VITE_PI_DATASET_URL: ${{ env.PI_ATLAS_DATASET_URL }}
+          VITE_PI_DATASET_URL: data/pi-2m/
         run: npm run build
 
-      - name: Verify Pages artifact is self-contained
-        run: bash scripts/verify_pages_artifact.sh dist "dist/${PI_ATLAS_DATASET_URL}"
+      - name: Verify 2M Pages artifact is self-contained
+        run: bash scripts/verify_pages_artifact.sh dist dist/data/pi-2m/
 
       - run: npx playwright install --with-deps chromium
 
-      # E2E runs against the same static build users get. The Rust service is
-      # no longer started: search happens in the WASM Worker, chunks are static.
+      # E2E runs against the same code users get, on the 2M dataset the
+      # assertions were written for. No Rust service: WASM Worker + static chunks.
       - name: E2E against the browser-only build
         env:
           PI_ATLAS_E2E_PREVIEW_PORT: 4175
         run: npm run test:e2e
 
+      # The deployed bundle bakes in the dataset chosen by PI_ATLAS_DATASET_URL
+      # (data/pi-2m/ by default, data/pi-1b/ for the full production deploy).
+      # Typecheck already ran above, so only the Vite build is repeated.
+      - name: Build deploy frontend (PI_ATLAS_DATASET_URL)
+        env:
+          VITE_BASE_PATH: ./
+          VITE_PI_DATASET_URL: ${{ env.PI_ATLAS_DATASET_URL }}
+        run: npx vite build --outDir dist-deploy
+
+      - name: Verify deploy Pages artifact is self-contained
+        run: bash scripts/verify_pages_artifact.sh dist-deploy "dist-deploy/${PI_ATLAS_DATASET_URL}"
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist-deploy
 
   deploy:
     needs: verify
