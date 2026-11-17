@@ -11,12 +11,8 @@
 import initWasm, { PiEngine } from "../../generated/pi-wasm/pi_wasm.js";
 import { ChunkLoader, ChunkIntegrityError } from "./chunkLoader";
 import { chunkForPosition, chunksForRange, type WebDatasetManifest } from "./manifest";
-import {
-  cachedFetcher,
-  clearChunkCache,
-  chunkCacheStatus,
-  writeCachedChunk,
-} from "./chunkCache";
+import { cachedFetcher, clearChunkCache, chunkCacheStatus } from "./chunkCache";
+import { mapLimit } from "./parallel";
 import {
   dateSequences,
   datesDto,
@@ -51,6 +47,13 @@ let activeJob: number | null = null;
 /** Only these kinds are "heavy" — light window/sample reads must not cancel a search. */
 const HEAVY_KINDS = new Set(["exact", "letters", "dates", "pattern", "stats"]);
 
+/**
+ * Chunks to fetch/verify in flight at once. The old sequential loop paid 100
+ * separate fetch + SHA-256 + IndexedDB round trips for a cold 1B search; eight
+ * concurrent workers cut that to ~13 rounds without opening 100 sockets.
+ */
+const CHUNK_LOAD_CONCURRENCY = 8;
+
 class JobCancelled extends Error {
   constructor() {
     super("search cancelled");
@@ -78,19 +81,21 @@ function throwIfCancelled(id: number): void {
 async function ensureChunks(indices: number[], id: number): Promise<void> {
   if (!engine || !loader || !manifest) throw new Error("worker not initialised");
   const total = manifest.totalDigits;
-  let done = 0;
-  for (const index of indices) {
+  // Only missing chunks need work. Chunks already resident in WASM are reused
+  // across searches, so repeat searches skip this entirely.
+  const missing = indices.filter((index) => !engine!.has_chunk(index));
+  let done = indices.length - missing.length;
+
+  await mapLimit(missing, CHUNK_LOAD_CONCURRENCY, async (index) => {
     throwIfCancelled(id);
-    if (!engine.has_chunk(index)) {
-      const bytes = await loader.loadChunk(index);
-      throwIfCancelled(id);
-      engine.set_chunk(index, bytes);
-      // Persist verified bytes (ChunkLoader already verified them).
-      void writeCachedChunk(manifest.datasetId, index, bytes);
-    }
-    done += manifest.chunks[index]?.digits ?? manifest.chunkDigits;
+    const bytes = await loader!.loadChunk(index);
+    throwIfCancelled(id);
+    // WASM re-verifies SHA-256 (defence in depth). cachedFetcher has already
+    // persisted verified bytes to IndexedDB, so no second write is needed.
+    engine!.set_chunk(index, bytes);
+    done += manifest!.chunks[index]?.digits ?? manifest!.chunkDigits;
     progress(id, Math.min(done, total), total);
-  }
+  });
 }
 
 async function allChunkIndices(): Promise<number[]> {

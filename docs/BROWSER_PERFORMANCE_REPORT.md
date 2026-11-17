@@ -49,6 +49,41 @@ size (~25 kB raw).
 The 1B validator reads 1 MiB blocks and streams both per-chunk and whole-file
 hashes; it never builds a 500 MB concatenation.
 
+## Load-time improvement (2026-11-18)
+
+A cold full-1B search originally loaded 100 chunks in a **sequential** loop:
+100 × (IndexedDB lookup → 5 MB fetch → SHA-256 → WASM `set_chunk` → IDB write).
+Two problems compounded it:
+
+1. Each chunk was written to IndexedDB **twice** — once by `cachedFetcher` and
+   again by `ensureChunks` (1 GB of writes for a 478 MiB dataset).
+2. All 100 round trips were serial, so latency could not overlap.
+
+`ensureChunks` now uses `mapLimit` with 8 concurrent workers, and the duplicate
+IndexedDB write was removed. Only missing chunks are loaded; chunks already
+resident in the WASM engine are reused by later searches with no network or
+IndexedDB work. `mapLimit` is covered by four unit tests (order, concurrency
+cap, error propagation, empty input).
+
+Exact/word/date searches now show a progress bar (digits prepared / total)
+instead of a bare "Searching…" spinner. The bar reaches 100% when every chunk
+is resident, then holds while the single-threaded WASM scan runs.
+
+### Measured WASM scan cost at 1B (extrapolated from the 2M fixture)
+
+| Search | 2M | 1B estimate |
+| --- | --- | --- |
+| exact number | ~7 ms | ~3.5 s |
+| absent number + prefix hint (2 scans) | ~14 ms | ~7 s |
+| word (letters) | ~9 ms | ~4.7 s |
+| date (6 formats + prefix hints, up to 12 scans) | ~80 ms | ~40 s |
+
+These are **scan-only** numbers after chunks are resident; the cold cost is
+dominated by the 478 MiB download. Serialization of 200,000 positions adds
+under 1 ms. The scan is single-threaded because GitHub Pages cannot set
+COOP/COEP headers; parallelising it would require a multi-worker partition with
+cross-worker carry semantics, which is deliberately not done here.
+
 ## Memory safety
 
 A historical parity failure reached ~5 GB and was SIGKILLed by the kernel,

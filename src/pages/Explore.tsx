@@ -20,6 +20,7 @@ import ResultCard, { StatRow } from "../components/ResultCard";
 import OddsRibbon from "../components/OddsRibbon";
 import HistoryPanel from "../components/HistoryPanel";
 import EmptyState, { ErrorState, LoadingState } from "../components/EmptyState";
+import SearchProgress from "../components/SearchProgress";
 import { shareOrCopy, exportSearchPng, downloadBlob } from "../lib/share";
 import { useToast } from "../components/Toast";
 import { buildShareUrl, serializeExplore } from "../lib/url";
@@ -118,6 +119,7 @@ function ModeTabs({ mode }: { mode: SearchMode }) {
 function DigitsPanel({ params }: { params: URLSearchParams }) {
   const run = useSearch((s) => s.runDigits);
   const searching = useSearch((s) => s.searching);
+  const progress = useSearch((s) => s.progress);
   const navigate = useNavigate();
   const initial = params.get("q") ?? "";
   const history = useHistory.getState();
@@ -167,6 +169,7 @@ function DigitsPanel({ params }: { params: URLSearchParams }) {
           {searching ? "Searching…" : "Search"}
         </button>
       </form>
+      <SearchProgress progress={progress} />
       <div className="mt-3 flex flex-wrap gap-1.5">
         {examples.map((q) => (
           <button
@@ -394,6 +397,7 @@ function DigitsInspector() {
 function DatesPanel() {
   const runDates = useSearch((s) => s.runDates);
   const searching = useSearch((s) => s.searching);
+  const progress = useSearch((s) => s.progress);
   const navigate = useNavigate();
   const history = useHistory.getState();
   const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
@@ -446,6 +450,7 @@ function DatesPanel() {
           {searching ? "Searching…" : "Search six formats"}
         </button>
       </form>
+      <SearchProgress progress={progress} />
       <p className="mb-0 mt-3 text-xs" style={{ color: "var(--text-2)" }}>
         Every encoding is searched: DDMMYYYY, MMDDYYYY, YYYYMMDD, DDMMYY, MMDDYY, YYMMDD — duplicates removed.
       </p>
@@ -550,6 +555,7 @@ function DatesInspector() {
 function LettersPanel({ params }: { params: URLSearchParams }) {
   const runLetters = useSearch((s) => s.runLetters);
   const searching = useSearch((s) => s.searching);
+  const progress = useSearch((s) => s.progress);
   const navigate = useNavigate();
   const history = useHistory.getState();
   const [word, setWord] = useState(params.get("q") ?? "");
@@ -598,6 +604,7 @@ function LettersPanel({ params }: { params: URLSearchParams }) {
           {searching ? "Searching…" : "Search both frames"}
         </button>
       </form>
+      <SearchProgress progress={progress} />
       <div className="mt-3 flex flex-wrap gap-1.5">
         {["PI", "ATLAS", "HELLO", "ZZZ"].map((w) => (
           <button key={w} type="button" className="chip" onClick={() => { setWord(w); search(w); }}>
