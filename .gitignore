@@ -39,6 +39,9 @@ pi-atlas-1b/
 *.pack
 *.mmap
 *.bin
+# Exception: the committed 2M browser dataset is only ~1 MB and MUST ship in
+# the Pages artifact/CI checkout. The 477 MB 1B pack stays ignored above.
+!public/data/pi-2m/chunks/*.bin
 
 # OS / editor cruft
 .DS_Store
