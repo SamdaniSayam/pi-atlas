@@ -64,10 +64,13 @@ jobs:
           PI_ATLAS_API: http://127.0.0.1:7788
         run: npm run test:e2e
 
-      - name: No localhost references in production bundle
+      - name: No localhost or absolute asset paths in production bundle
         run: |
           if grep -R -E 'localhost|127\.0\.0\.1' dist --include='*.js' --include='*.html' --include='*.css'; then
             echo 'ERROR: production bundle references localhost'; exit 1
+          fi
+          if grep -R -E 'url\(/|href="/|src="/' dist --include='*.html' --include='*.css'; then
+            echo 'ERROR: absolute asset path breaks GitHub Pages subpath'; exit 1
           fi
 
       - uses: actions/upload-pages-artifact@v3

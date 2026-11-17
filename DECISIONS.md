@@ -208,3 +208,40 @@ close-button/focus behaviour, key pages at 320px with zero console errors, and
 (regenerate with `node scripts/mobile-shots.mjs`). Honest limits: no real
 Android/iOS device, no Lighthouse run, no foldable-posture or virtual-keyboard
 occlusion testing was available in this environment; those remain untested.
+
+## D23 — Public production deployment: GitHub Pages + user-owned HTTPS API (2026-11-17)
+
+**Context.** Move from the local demo (frontend 4174 → 1B service 7780) to a
+real public site without interrupting local development. GitHub Pages cannot
+run the Rust service; the 477 MB 1B dataset must stay out of Git.
+
+**Decision.**
+- Frontend: GitHub Pages project site at `https://samdanisayam.github.io/pi-atlas/`.
+  Vite `base: "./"` (override `VITE_BASE_PATH`), relative favicon/fonts/og:image,
+  relative `@font-face` URLs, HashRouter preserved (refresh/direct nav need no
+  server rewrites). `src/data/piApi.ts` resolves the API root from
+  `window.__PI_ATLAS_API__` → `VITE_PI_ATLAS_API` → same-origin `/api/v1`.
+- Backend: unchanged Rust/axum service on a user-owned low-cost VPS (Oracle
+  Ampere A1 free / Hetzner CX22 ~€4/mo) behind Caddy TLS on loopback; CORS
+  allowlist (`PI_ATLAS_CORS_ORIGINS`), 64 KB body limit, SIGTERM graceful
+  shutdown, bounded concurrency. Hostname/origin are deployment inputs, never
+  hardcoded private infrastructure.
+- CI: `.github/workflows/deploy.yml` does `npm ci` → typecheck → 80 unit tests
+  → regenerate the 2M pack from the committed parity fixture → Rust build →
+  frontend build → 48 Playwright E2E on ports 4175/7788 → no-localhost/no-
+  absolute-asset checks → Pages deploy. All E2E uses ports separate from the
+  live demo.
+- Verified locally: CORS allow/deny, 413 body-limit, real search, SIGTERM,
+  80/80 unit + 48/48 E2E; live Pages: all routes render, 320/375/390/430 px
+  have zero overflow, mobile bottom nav works, no page errors, API-down state
+  shows a clear error. The only live 404s are API calls until the user deploys
+  the backend (expected, not mocked). Font 404s found in live verification were
+  fixed by making `@font-face` URLs relative and guarded in CI.
+
+**Limit / stop point.** No cloud CLI or credentials exist in this environment;
+the public HTTPS API and `PI_ATLAS_API_URL` variable require the user's cloud
+account and DNS (exact commands in DEPLOY.md). Until then the deployed site is
+a real static production build with a graceful API-down state — not a local
+demo or mock. `og:image` stays relative (some crawlers need an absolute URL;
+documented for a custom domain). No force-push or overwriting occurred: repo
+`SamdaniSayam/pi-atlas` was created fresh after confirming the name was free.

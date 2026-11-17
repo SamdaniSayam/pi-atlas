@@ -34,12 +34,16 @@ build → frontend build (with `VITE_PI_ATLAS_API` from the repo Variable
 
 ## Manual steps (require your account / credentials)
 
+The repository `SamdaniSayam/pi-atlas` and GitHub Pages are **already created and
+enabled**; the remaining manual work is the backend host (steps 1–5) and the
+final verification (step 6).
+
 ### 0. Names you must choose
 
 | Placeholder | Meaning | Example |
 | --- | --- | --- |
 | `<user>` | GitHub account | `SamdaniSayam` |
-| `<repo>` | Repository | `pi-atlas` |
+| `<repo>` | Repository (already created) | `pi-atlas` |
 | `<api-host>` | Public DNS name for the API | `pi-atlas.example.com` |
 | `<pages-origin>` | GitHub Pages origin (no path) | `https://SamdaniSayam.github.io` |
 
@@ -166,7 +170,7 @@ sudo systemctl daemon-reload && sudo systemctl restart pi-atlas
 
 ### 6. Production verification checklist
 
-- [ ] `https://<user>.github.io/pi-atlas/` opens; assets 200; no localhost in bundle.
+- [ ] `https://samdanisayam.github.io/pi-atlas/` opens; assets 200; no localhost in bundle.
 - [ ] Routes load/refresh via `#/…`; mobile bottom nav works at 320/375/390/430 px; desktop intact.
 - [ ] `curl https://<api-host>/api/v1/health` → 200 with `total_digits: 1000000000`.
 - [ ] Browser: a real numeric search returns matches from the 1B dataset; letter/date/colour/shape explorers work.

@@ -88,8 +88,8 @@ GitHub Pages (static dist/)  ──HTTPS──▶  Caddy (TLS)  ──▶  pi-se
                                                       packed 1B dataset (outside Git)
 ```
 
-**Production URL (once deployed):** `https://<user>.github.io/pi-atlas/`
-(replace `<user>` with the GitHub account that owns the repository).
+**Production URL:** `https://samdanisayam.github.io/pi-atlas/`
+**Repository:** `https://github.com/SamdaniSayam/pi-atlas`
 
 ### Configuration
 
