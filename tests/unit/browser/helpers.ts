@@ -1,16 +1,19 @@
-import { webcrypto } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { WebDatasetManifest, WebChunkMeta } from "../../../src/data/browser/manifest";
 import { packDigits } from "../../../src/data/browser/packedDigits";
 import { toHex, type Sha256 } from "../../../src/data/browser/sha256";
 
-/** WebCrypto-backed SHA-256 for tests (jsdom lacks crypto.subtle). */
+/**
+ * Node-backed SHA-256 for tests. Uses createHash rather than webcrypto.subtle:
+ * it is realm-agnostic, so ArrayBuffers created by jsdom on Node 20 in CI are
+ * accepted (cross-realm instances fail SubtleCrypto's strict instanceof check).
+ */
 export const nodeSha256: Sha256 = async (bytes) => {
-  const buffer: ArrayBuffer =
-    bytes instanceof Uint8Array
-      ? (bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer)
-      : bytes;
-  const digest = await webcrypto.subtle.digest("SHA-256", buffer);
-  return toHex(new Uint8Array(digest));
+  const view = bytes as Uint8Array;
+  const data = typeof view.byteOffset === "number" && view.buffer
+    ? Buffer.from(view.buffer as ArrayBuffer, view.byteOffset, view.byteLength)
+    : Buffer.from(bytes as ArrayBuffer);
+  return createHash("sha256").update(data).digest("hex");
 };
 
 export interface SyntheticDataset {
