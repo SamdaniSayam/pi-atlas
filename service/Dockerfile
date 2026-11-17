@@ -7,9 +7,8 @@ COPY crates ./crates
 RUN cargo build --release --locked -p pi-server
 
 FROM debian:bookworm-slim
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# CA bundle from the builder (no apt network dependency at image build time).
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /app/target/release/pi-server /usr/local/bin/pi-server
 
 ENV PI_ATLAS_ADDR=0.0.0.0:7787 \
