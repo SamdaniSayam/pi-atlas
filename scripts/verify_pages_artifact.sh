@@ -59,9 +59,12 @@ if (totalBytes !== core.total_digits / 2) bad("packed bytes != totalDigits/2");
 console.log(`dataset OK: ${web.totalDigits} digits, ${web.chunks.length} chunks, ${totalBytes} packed bytes`);
 NODE
 
-# Pages serves from a subpath: no absolute asset URLs or dev-server references.
-if grep -R -E 'localhost|127\.0\.0\.1' "$DIST" --include='*.js' --include='*.html' --include='*.css' >/dev/null 2>&1; then
-  fail "production bundle references localhost/127.0.0.1"
+# Pages serves from a subpath: no absolute asset URLs or dev-server endpoints.
+# React Router 7 legitimately embeds `new URL("http://localhost")` as an
+# internal URL-normalization base (no port, no /api path), so match only real
+# dev-server references: a host:port pair or a host/api path.
+if grep -R -E '(localhost|127\.0\.0\.1):[0-9]+|(localhost|127\.0\.0\.1)/api' "$DIST" --include='*.js' --include='*.html' --include='*.css' >/dev/null 2>&1; then
+  fail "production bundle references a localhost/127.0.0.1 dev endpoint"
 fi
 if grep -R -E 'url\(/|href="/|src="/' "$DIST" --include='*.html' --include='*.css' >/dev/null 2>&1; then
   fail "absolute asset path breaks GitHub Pages subpath"
