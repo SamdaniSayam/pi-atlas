@@ -40,7 +40,7 @@ jobs:
       # Regenerate the 2M parity pack from the committed fixture — the real
       # 1B dataset and its indexes are never in Git or CI.
       - name: Regenerate 2M test dataset
-        run: python3 scripts/pack_dataset.py public/pi-2m.txt /tmp/pi-atlas-e2e-data
+        run: python3 scripts/pack_dataset.py --input public/pi-2m.txt --output-dir /tmp/pi-atlas-e2e-data --chunk-digits 1000000
       - name: Build search service
         run: cargo build --release --locked -p pi-server
         working-directory: service
@@ -53,9 +53,6 @@ jobs:
           VITE_PI_ATLAS_API: ${{ vars.PI_ATLAS_API_URL }}
         run: npm run build
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
       - run: npx playwright install --with-deps chromium
 
       - name: E2E against real Rust service (alternate ports)

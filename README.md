@@ -42,7 +42,7 @@ fixture stays in the repo as the parity reference for the search engines and
 the E2E suite.
 
 ```bash
-python3 scripts/pack_dataset.py <decimal.txt> <out-dir>   # pack + verify
+python3 scripts/pack_dataset.py --input <decimal.txt> --output-dir <out-dir>   # pack + verify
 npm run verify:pi                                          # re-verify the 2M fixture
 ```
 

@@ -79,7 +79,7 @@ Option B — generate from scratch (needs ~1.6 GB source text):
 ```bash
 # On a beefy machine: compute the first 1,000,000,000 decimals with y-cruncher
 # (Chudnovsky). Point pack_dataset.py at the ASCII decimal file.
-python3 scripts/pack_dataset.py /path/to/pi-decimals.txt /srv/pi-atlas/data-1b
+python3 scripts/pack_dataset.py --input /path/to/pi-decimals.txt --output-dir /srv/pi-atlas/data-1b
 # The script verifies every chunk SHA-256, the whole-file checksum and
 # spot-unpacks digits at both ends and the middle before it succeeds.
 ```
