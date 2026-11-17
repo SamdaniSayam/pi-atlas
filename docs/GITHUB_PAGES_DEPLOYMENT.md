@@ -66,6 +66,11 @@ so both `http://localhost:4174/` and
 | `data/pi-2m/` | 2,000,000 | 2 | 1 MB | committed, local dev + CI default |
 | `data/pi-1b/` | 1,000,000,000 | 100 | 500 MB | Stage 9, assembled from the 1B source tree |
 
+The 2M chunks are tracked in Git despite the repository-wide `*.bin` ignore:
+`.gitignore` has an explicit `!public/data/pi-2m/chunks/*.bin` exception. Do not
+remove it — a clean CI checkout must contain both chunk files or the artifact
+validator fails with `cannot read chunk 0`.
+
 The 1B chunks are ~477 MiB and are **not** generated or committed by CI. They
 are assembled once from the verified source dataset and published as static
 Pages files (see `docs/SEARCH_CORRECTNESS_REPORT.md`). If repository policy

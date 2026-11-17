@@ -38,7 +38,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit + integration tests (96 tests)
+      - name: Unit + integration tests
         run: npm test
 
       - name: Install π verifier dependency
