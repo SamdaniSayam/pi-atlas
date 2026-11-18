@@ -341,3 +341,26 @@ are imported from `main.tsx`, so Vite hashes and emits them into `dist/assets`.
 Reason: standard bundler flow removes the warning, keeps fonts self-hosted with
 `font-display: swap`, and preserves their appearance. `scripts/make_og.mjs`
 reads the same source files.
+
+### SB-7 (smoke) — One sequential Playwright runner, not the test runner
+The smoke test is a plain Node script driving Playwright Chromium with one
+context/page at a time, rather than a `playwright test` suite. Reason: the
+checks must run in a fixed order (search → share link → QR → banner), support
+per-check SKIP, and emit a custom Markdown/JSON report with an exact
+`RESULT: PASS/FAIL` line — all simpler to control imperatively. It also keeps
+live runs polite and bounded to roughly 30 navigations.
+
+### SB-8 (smoke) — Expectations come from the app manifest
+`smoke:local` uses the default production build (currently the 2M dataset) and
+does not hardcode a dataset size. `manifest-ok` reads the running app's own
+manifest (`total_digits`) and only compares it to `SMOKE_EXPECT_DIGITS` when
+that variable is set; `digits-12`/`digits-feynman` assert the fixed, dataset-
+independent checkpoint positions 148/762. Reason: the production dataset is
+~1B digits, so smoke must verify whatever the deployed build actually serves
+without baking 2M-only wording into the test.
+
+### SB-9 (smoke) — Preview lifecycle on a free port
+`smoke:local` builds only when `dist/` is missing or older than `src/`, picks a
+free loopback port, starts `vite preview --strictPort`, and stops the whole
+process group in a `finally` block. Reason: no port collisions, no orphaned
+server after a failed run, and fast repeated runs against current source.

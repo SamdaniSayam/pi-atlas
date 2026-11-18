@@ -114,6 +114,67 @@ Memory note: run heavy commands under the machine's cap, e.g.
 `systemd-run --user --scope -q -p MemoryMax=3G -p MemorySwapMax=0 npm run build`,
 and never run two heavy commands at once.
 
+## Pre-deploy smoke test
+
+A read-only, sequential Playwright walk over the built app. It writes
+`smoke-report/report.md` and `smoke-report/report.json` and exits 0 only when
+every REQUIRED check passes (SKIP and WARN never fail the run).
+
+```bash
+npm run smoke:local
+# builds dist/ if it is missing or older than the source, starts `vite preview`
+# on a free port, runs the checks, and always stops the server afterwards.
+
+SMOKE_BASE_URL=https://user.github.io/pi-atlas/ npm run smoke:live
+# SMOKE_BASE_URL is required; without it the command prints a clear message and
+# exits 2. Nothing is deployed by either command.
+```
+
+Optional environment variables:
+
+- `SMOKE_EXPECT_DIGITS=1000000000` — assert the app manifest's `total_digits`
+  equals this value (otherwise any positive integer passes).
+- `SMOKE_SKIP=check1,check2` — comma-separated check names to mark as SKIP.
+  Handy for baselining an older live build that lacks newer features (for
+  example `SMOKE_SKIP=wishcard-qr-host,banner-from-qr`). SKIP does not count as
+  a failure.
+
+Known-harmless failed requests can be allow-listed by editing
+`ALLOW_FAILED_REQUESTS` at the top of `scripts/smoke/smoke.mjs` (empty by
+default). Each entry is a regular expression matched against
+`<url> <failure>` or `<status> <url>`; leave the list empty unless you have
+confirmed a request is benign.
+
+Checks (REQUIRED unless marked WARN):
+
+| Check | What it verifies |
+| --- | --- |
+| `home-loads` | Home returns 200, has the app title and shows the hero. |
+| `no-console-errors` | Zero console errors and page errors across the whole run. |
+| `no-failed-requests` | No failed or ≥400 request outside the allow-list. |
+| `manifest-ok` | Manifest loads, `total_digits` is a positive integer (and matches `SMOKE_EXPECT_DIGITS` when set), and the About page shows the same size. |
+| `digits-12` | Digits search `12` → first position exactly 148. |
+| `digits-feynman` | Digits search `999999` → first position exactly 762. |
+| `digits-not-found` | A 20-digit search renders a found/not-found result without crashing. |
+| `letters-pi` | Letters search `PI` is found. |
+| `shapes-preset` | Plus preset + search produces a result within 60 s (WARN over 20 s). |
+| `deep-link-roundtrip` | The share link for `12` restores position 148 in a fresh context. |
+| `wishcard-download` | Found and not-found Square PNGs: correct name, 1080×1080 header, under 600 KB. |
+| `wishcard-qr-host` | The card QR decodes with `jsqr`, has the test origin and contains `src=card`. |
+| `banner-from-qr` | The QR URL shows the shared-result banner with position 148; "Search your own" clears it and focuses the input. |
+| `wishcard-fonts` | `document.fonts.check` is true for Fraunces/Inter/JetBrains Mono and every CSS font file returns HTTP 200. |
+| `wishcard-hide-digits` | Date-helper card with "Hide my digits": QR and caption contain none of the six date strings. |
+| `mobile-layout` | At 390×844, Home, Digits, Shapes, Odds Lab, About, the card dialog and the banner have no horizontal overflow. |
+| `prod-hygiene` | No `dev/wish` gallery in a production build (or on the live site). |
+| `first-result-time` (WARN) | Time to the first digits result; WARN over 5 s. |
+| `data-transfer` (WARN) | Total bytes transferred; WARN over 60 MB. |
+| `memory-hint` (WARN) | End-of-run `performance.memory.usedJSHeapSize`, when available. |
+
+**Polite live use:** `smoke:live` is strictly normal, read-only browsing —
+sequential steps, at most about 60 page navigations, no load testing, and it
+never asks the app to fetch data chunks it would not load on its own. Do not
+run it in parallel or against a live site you do not control without permission.
+
 ## Deployment
 
 Pure static site on GitHub Pages. The browser loads the WASM engine and the
