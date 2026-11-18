@@ -57,6 +57,9 @@ a **Hide my digits** switch, and Copy caption.
   No images are downloaded and no data leaves the browser.
 - Dataset-size wording (e.g. "1 billion digits") comes from the loaded manifest,
   not a hardcoded string, so a different dataset updates every card.
+- The QR payload alone carries `src=card`. Scanning it opens the same search with
+  a small "Someone found … in π" banner; Copy link and captions never carry the
+  marker, so old links keep behaving exactly as before.
 - The QR opens the exact deep link for that search. Very long links fall back
   to the mode's query-free explorer URL so the plate stays scannable.
 - **Hide my digits** removes the query from the card, context strip, QR URL,

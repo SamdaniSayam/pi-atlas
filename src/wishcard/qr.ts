@@ -23,12 +23,31 @@ export function explorerUrl(shareUrl: string): string {
   }
 }
 
+/** Add the banner marker to the QR payload only; share URLs stay untouched. */
+function withSrcCard(url: string): string {
+  try {
+    const u = new URL(url);
+    const fragment = u.hash.startsWith("#") ? u.hash.slice(1) : u.hash;
+    const [path, query = ""] = fragment.split("?");
+    const p = new URLSearchParams(query);
+    p.set("src", "card");
+    u.hash = `${path}?${p.toString()}`;
+    return u.toString();
+  } catch {
+    const [path, query = ""] = url.split("?");
+    const p = new URLSearchParams(query);
+    p.set("src", "card");
+    return `${path}?${p.toString()}`;
+  }
+}
+
 /**
  * Choose the QR payload. A version >= 10 symbol is too dense for the small
  * card plate, so long links fall back to the parameter-free explorer URL.
  */
 export function qrContentFor(input: WishCardInput): QrContent {
-  const preferred = input.hideQuery ? stripQueryFromUrl(input.shareUrl) : input.shareUrl;
+  const base = input.hideQuery ? stripQueryFromUrl(input.shareUrl) : input.shareUrl;
+  const preferred = withSrcCard(base);
   try {
     const qr = QRCode.create(preferred, { errorCorrectionLevel: "M" });
     if (qr.version <= MAX_VERSION) return { text: preferred, shortened: false };

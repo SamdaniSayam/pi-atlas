@@ -87,6 +87,74 @@ code,
     border-radius: var(--radius-md);
   }
 
+  /* Shared-result banner: fixed slot prevents a first-load layout shift. */
+  .shared-banner-slot {
+    width: 100%;
+    height: 132px;
+    flex: none;
+  }
+
+  .shared-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.35;
+    animation: shared-banner-in 200ms ease-out both;
+  }
+
+  .shared-banner-dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+
+  .shared-banner-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .shared-banner-text .mono {
+    font-weight: 600;
+  }
+
+  .shared-banner-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .shared-banner-cta {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .shared-banner-close {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -228,6 +296,37 @@ code,
   /* Min-width for form controls */
   .touch-control {
     min-height: var(--touch-secondary, 44px);
+  }
+}
+
+@keyframes shared-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .shared-banner {
+    flex-wrap: wrap;
+    align-content: center;
+  }
+  .shared-banner-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .shared-banner-cta {
+    flex: 1 1 auto;
+  }
+}
+
+@media (min-width: 640px) {
+  .shared-banner-slot {
+    height: 76px;
   }
 }
 

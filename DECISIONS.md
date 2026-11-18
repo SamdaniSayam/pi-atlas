@@ -294,3 +294,38 @@ copy, captions and headers, which would lie about the shipped 1B dataset.
 manifest, with a 1B pre-load fallback); copy uses "1 billion digits", compact
 labels use "1B digits searched". Reason: no hardcoded or fake numbers on a
 card; a dataset change updates every card.
+
+## Shared-link banner decisions
+
+### SB-1 — `src=card` is added only to the QR payload
+`qrContentFor` appends the marker after the existing hide-query step; captions
+and the in-app Copy link still use the untouched `shareUrl`. Reason: only a
+scanned card should identify its visitor.
+
+### SB-2 — QR size rule kept its existing fallback
+With `src=card`, both the normal (`q=12`) and hidden (`src` only) URLs measure
+version 5 (37 modules), well under the version 9 limit. Links long enough to
+need version 10+ still fall back to the parameter-free explorer URL, which has
+no `src` and therefore no banner. Reason: keep the plate scannable; verified in
+unit tests.
+
+### SB-3 — Strict, single-value gate
+`parseSrc` accepts only one `src` whose exact value is `card`. Banner copy is
+built from app results, never URL text. Reason: `src=evil`, repeated values and
+script-like strings must be ignored without injecting anything.
+
+### SB-4 — Fixed-height slot, generic copy first
+The Explorer renders a fixed-height slot as soon as `src=card` is present; the
+lazy banner shows generic copy there until the result finishes, then swaps the
+text in place and announces only the final copy. Reason: no first-load layout
+shift and no double announcement; the slot exists only while the banner is up.
+
+### SB-5 — Semantic token aliases
+`--bg-raised` and `--line` are aliases of existing `--surface-2` / `--border`
+tokens. Reason: the banner uses the requested token names without introducing
+any new colours.
+
+### SB-6 — Strip the marker outside Explorer
+Home, Odds Lab, About and unknown routes remove any `src` with `replace` and
+show no banner. Reason: the banner is Explorer-only; old links without `src`
+are already unaffected.

@@ -12,6 +12,9 @@
   --accent: #61e6c1;
   --accent-2: #65bceb;
   --border: #27343a;
+  /* Semantic aliases used by the shared-result banner (no new colours). */
+  --bg-raised: var(--surface-2);
+  --line: var(--border);
   --success: #61e6c1;
   --warning: #e7bd72;
   --error: #f07878;

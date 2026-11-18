@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from "react";
-import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
+import { HashRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import Header from "./components/Header";
 import BottomNavigation from "./components/BottomNavigation";
 import SettingsDrawer from "./components/SettingsDrawer";
@@ -8,6 +8,7 @@ import Toast from "./components/Toast";
 import { LoadingState } from "./components/EmptyState";
 import { useSettings, applySettingsToDocument } from "./state/useSettings";
 import { usePiStore } from "./data/piStore";
+import { stripSrc } from "./lib/sharedBanner";
 import { APP_NAME } from "./constants";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -30,6 +31,24 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+  return null;
+}
+
+/** `src=card` belongs only on Explorer URLs; drop it silently elsewhere. */
+function StripSharedSrc() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (location.pathname.startsWith("/explore/")) return;
+    const current = new URLSearchParams(location.search);
+    if (!current.has("src")) return;
+    const next = stripSrc(current);
+    const search = next.toString();
+    navigate(
+      { pathname: location.pathname, search: search ? `?${search}` : "", hash: location.hash },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, location.hash, navigate]);
   return null;
 }
 
@@ -69,6 +88,7 @@ export default function App() {
         Skip to content
       </a>
       <ScrollToTop />
+      <StripSharedSrc />
       <Header
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenShortcuts={() => setShortcutsOpen(true)}

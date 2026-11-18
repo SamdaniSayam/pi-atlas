@@ -3,6 +3,7 @@ import { buildCaption, stripQueryFromUrl } from "../../src/wishcard/caption";
 import { eyebrow, hashString, pickCopy } from "../../src/wishcard/copy";
 import { fileNameFor, fitText, slugFor } from "../../src/wishcard/layout";
 import { explorerUrl, qrContentFor } from "../../src/wishcard/qr";
+import { buildShareUrl } from "../../src/lib/url";
 import type { WishCardInput } from "../../src/wishcard/types";
 
 function input(patch: Partial<WishCardInput> = {}): WishCardInput {
@@ -99,7 +100,7 @@ describe("wish-card QR fallback", () => {
   it("uses the full share URL for normal searches", () => {
     const card = input();
     const content = qrContentFor(card);
-    expect(content.text).toBe(card.shareUrl);
+    expect(content.text).toBe(`${card.shareUrl}&src=card`);
     expect(content.shortened).toBe(false);
   });
 
@@ -115,6 +116,27 @@ describe("wish-card QR fallback", () => {
   it("removes the query for hidden cards", () => {
     const content = qrContentFor(input({ hideQuery: true }));
     expect(content.text).not.toContain("q=");
+  });
+
+  it("adds src=card to the QR payload only, for normal and hidden cards", () => {
+    const normal = qrContentFor(input());
+    expect(normal.text).toContain("src=card");
+    expect(normal.text).toContain("q=12");
+    const hidden = qrContentFor(input({ hideQuery: true }));
+    expect(hidden.text).toContain("src=card");
+    expect(hidden.text).not.toContain("q=12");
+    expect(buildCaption(input())).not.toContain("src=card");
+    expect(buildCaption(input({ hideQuery: true }))).not.toContain("src=card");
+    expect(buildShareUrl("/explore/digits", { mode: "digits", query: "12" })).not.toContain("src=card");
+  });
+
+  it("falls back to a parameter-free URL when the marked QR is too dense", () => {
+    const longQuery = "9".repeat(1500);
+    const card = input({ query: longQuery, shareUrl: `https://pi.test/pi-atlas/#/explore/digits?q=${longQuery}` });
+    const content = qrContentFor(card);
+    expect(content.shortened).toBe(true);
+    expect(content.text).not.toContain("src=card");
+    expect(content.text).toBe("https://pi.test/pi-atlas/#/explore/digits");
   });
 });
 

@@ -23,7 +23,10 @@ import EmptyState, { ErrorState, LoadingState } from "../components/EmptyState";
 import SearchProgress from "../components/SearchProgress";
 import { shareOrCopy } from "../lib/share";
 import { useToast } from "../components/Toast";
-import { buildShareUrl, serializeExplore } from "../lib/url";
+import { buildShareUrl, parsePattern, serializeExplore } from "../lib/url";
+import { parseSrc } from "../lib/sharedBanner";
+import { datasetWords } from "../wishcard/copy";
+import type { SharedBannerResult } from "../lib/sharedBanner";
 import PatternPainter, { SHAPE_PRESETS, COLOUR_PRESETS } from "../components/PatternPainter";
 import { submitPattern, cancelJob, pollJob, type PatternResult, type PatternMatch } from "../data/piApi";
 import { expectedPatternMatches, type PatternSpec } from "../engine/patternSearch";
@@ -32,6 +35,8 @@ import { expectedPatternMatches, type PatternSpec } from "../engine/patternSearc
 const WishCardSection = lazy(() =>
   import("../wishcard/WishCardPreview").then((m) => ({ default: m.WishCardSection })),
 );
+/** Banner code is fetched only for visitors arriving with src=card. */
+const SharedBanner = lazy(() => import("../components/SharedBanner"));
 function WishCard({ ...props }: ComponentProps<typeof WishCardSection>) {
   return (
     <Suspense fallback={<div className="panel h-16 animate-pulse" aria-label="Wish card loading" />}>
@@ -76,6 +81,64 @@ export default function Explore() {
 function ExploreReady({ mode }: { mode: SearchMode }) {
   const location = useLocation();
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const showShared = parseSrc(params);
+  const datasetSize = useDatasetSize();
+  const digitsResult = useSearch((s) => s.digitsResult);
+  const lettersResult = useSearch((s) => s.lettersResult);
+  const searching = useSearch((s) => s.searching);
+  const searchError = useSearch((s) => s.searchError);
+  const pattern = usePatternResult();
+
+  // Banner copy is built only from app-computed results; the URL is a gate.
+  let sharedResult: SharedBannerResult = null;
+  let sharedReady = false;
+  const urlQuery = params.get("q");
+  const urlPattern = parsePattern(params.get("p"));
+  if (!urlQuery && !urlPattern) {
+    sharedReady = true;
+  } else if (mode === "digits" && urlQuery) {
+    if (searchError) sharedReady = true;
+    else if (digitsResult && !searching && digitsResult.query === urlQuery) {
+      sharedReady = true;
+      sharedResult = {
+        kind: "digits",
+        found: digitsResult.found,
+        query: digitsResult.query,
+        position: digitsResult.found ? digitsResult.positions[0] ?? null : null,
+      };
+    }
+  } else if (mode === "letters" && urlQuery) {
+    if (searchError) sharedReady = true;
+    else if (lettersResult && !searching && lettersResult.word.toUpperCase() === urlQuery.toUpperCase()) {
+      sharedReady = true;
+      const frame = lettersResult.frames.find((f) => f.total > 0);
+      sharedResult = {
+        kind: "letters",
+        found: lettersResult.total > 0,
+        query: lettersResult.word,
+        position: frame?.matches[0]?.position ?? null,
+      };
+    }
+  } else if ((mode === "colors" || mode === "shapes") && urlPattern) {
+    const spec = pattern.spec;
+    const samePattern = spec
+      && spec.rows === Number(params.get("pr") ?? 1)
+      && spec.cols === Number(params.get("pc") ?? 1)
+      && JSON.stringify(spec.cells) === JSON.stringify(urlPattern);
+    if (samePattern && !pattern.searching) {
+      sharedReady = true;
+      const match = pattern.matches[0];
+      sharedResult = {
+        kind: mode === "colors" ? "pixels" : "shapes",
+        found: pattern.total > 0,
+        row: match ? match.row + 1 : null,
+        column: match ? match.col + 1 : null,
+      };
+    }
+  } else {
+    // Dates and other modes have no card copy; the generic message is enough.
+    sharedReady = true;
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,11 +152,25 @@ function ExploreReady({ mode }: { mode: SearchMode }) {
           {mode === "colors" && <PatternPanel colourMode params={params} />}
           {mode === "shapes" && <PatternPanel colourMode={false} params={params} />}
         </div>
-        <div className="min-h-[420px] lg:h-[calc(100vh_-_220px)] lg:min-h-[520px]">
-          {mode === "digits" && <DigitStage />}
-          {mode === "dates" && <DigitStage />}
-          {mode === "letters" && <LettersStage />}
-          {(mode === "colors" || mode === "shapes") && <PatternStage colourMode={mode === "colors"} mode={mode} />}
+        <div className="flex min-h-[420px] flex-col gap-3 lg:h-[calc(100vh_-_220px)] lg:min-h-[520px]">
+          {showShared && (
+            <div className="shared-banner-slot -mx-1 lg:mx-auto lg:max-w-[720px]">
+              <Suspense fallback={null}>
+                <SharedBanner
+                  mode={mode}
+                  result={sharedResult}
+                  datasetSizeWords={datasetWords(datasetSize)}
+                  ready={sharedReady}
+                />
+              </Suspense>
+            </div>
+          )}
+          <div className="min-h-0 flex-1">
+            {mode === "digits" && <DigitStage />}
+            {mode === "dates" && <DigitStage />}
+            {mode === "letters" && <LettersStage />}
+            {(mode === "colors" || mode === "shapes") && <PatternStage colourMode={mode === "colors"} mode={mode} />}
+          </div>
         </div>
         <div className="flex flex-col gap-4">
           {mode === "digits" && <DigitsInspector />}
