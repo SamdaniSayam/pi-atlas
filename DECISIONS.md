@@ -329,3 +329,15 @@ any new colours.
 Home, Odds Lab, About and unknown routes remove any `src` with `replace` and
 show no banner. Reason: the banner is Explorer-only; old links without `src`
 are already unaffected.
+
+## Build, smoke and layout decisions
+
+### F-1 — Bundle the font CSS instead of linking a `public/` file
+The warning came from `index.html` lines 6–7 (`<link rel="preload" href="fonts/fonts.css" as="style">`
+and `<link rel="stylesheet" href="fonts/fonts.css">`): with `base: "./"` Vite
+leaves relative `public/` URLs untouched and warns they cannot be resolved at
+build time. `fonts.css` and its woff2 files now live in `src/assets/fonts/` and
+are imported from `main.tsx`, so Vite hashes and emits them into `dist/assets`.
+Reason: standard bundler flow removes the warning, keeps fonts self-hosted with
+`font-display: swap`, and preserves their appearance. `scripts/make_og.mjs`
+reads the same source files.

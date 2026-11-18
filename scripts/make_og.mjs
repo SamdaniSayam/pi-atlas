@@ -29,7 +29,7 @@ const row = (from, to) =>
 
 const font = async (name) =>
   `data:font/woff2;base64,${await readFile(
-    path.join(root, "public", "fonts", name),
+    path.join(root, "src", "assets", "fonts", name),
   ).toString("base64")}`;
 
 const [fraunces, inter, mono] = await Promise.all([
