@@ -345,6 +345,23 @@ code,
   left: 0;
 }
 
+.wish-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.wish-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.28) 50%, transparent 62%);
+  animation: wish-shimmer-sweep 900ms ease-out 1 forwards;
+}
+@keyframes wish-shimmer-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(110%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

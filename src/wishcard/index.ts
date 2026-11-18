@@ -6,14 +6,32 @@ import type { DigitsSearchResult } from "../engine/digitsSearch";
 import type { LetterSearchResult } from "../engine/lettersSearch";
 import type { PatternResult } from "../data/piApi";
 import { stripQueryFromUrl } from "./caption";
-import type { WishCardInput } from "./types";
+import { datasetWordsWithDigits } from "./copy";
+import { tierFor } from "./tiers";
+import type { WishCardInput, WishSubject } from "./types";
 
-export { buildCaption, stripQueryFromUrl } from "./caption";
-export { FINE_PRINT, datasetShort, datasetWords, eyebrow, hashString, pickCopy } from "./copy";
-export { FORMATS, cacheKeyFor, ellipsizeMiddle, fileNameFor, fitText, slugFor } from "./layout";
+export { buildCaption, stripQueryFromUrl, stripSrcCard } from "./caption";
+export {
+  FINE_PRINT, HEADLINES, HONESTY_BANNED, QUOTES, SUBLINES,
+  datasetShort, datasetWords, datasetWordsWithDigits, eyebrow,
+  hashString, pickCopy, previewLine, sanitizeDedication,
+} from "./copy";
+export { formatDepth } from "./depth";
+export {
+  FORMATS, LAYOUTS, cacheKeyFor, ellipsizeMiddle, fileNameFor,
+  fitText, layoutBoxes, qrPlateFor, slugFor,
+} from "./layout";
 export { clearWishCardCache, renderWishCard, waitForFonts, whenIdle } from "./render";
-export { DEFAULT_WISH_OPTIONS } from "./types";
-export type { WishCardInput, WishCopy, WishFormat, WishMode, WishOptions, WishStyle } from "./types";
+export { THEMES, contrastRatio, luminance } from "./themes";
+export { TIER_LABELS, TIER_THRESHOLDS, oneIn, tierFor, tierPill } from "./tiers";
+export { DEFAULT_WISH_OPTIONS, SUBJECT_CHIPS, SUBJECT_PHRASES } from "./types";
+export type {
+  WishCardInput, WishCopy, WishFormat, WishMode, WishOptions,
+  WishQuote, WishStyle, WishSubject, WishTier,
+} from "./types";
+export type { TextBox } from "./layout";
+export type { TierTheme } from "./themes";
+export type { RenderedCard } from "./render";
 
 type Mode = "pixels" | "shapes";
 
@@ -22,6 +40,18 @@ function contextFromDigits(digits: string, position: number, matchLength: number
   const end = Math.min(digits.length, position + matchLength + 12);
   const text = digits.slice(start - 1, end);
   return { text, matchStart: start > 0 ? position - start : 0, matchLength };
+}
+
+/** Shared fields for every built card. No field is fake or hardcoded. */
+function baseFields(found: boolean, expected: number, datasetSize: number, subject: WishSubject) {
+  const input = { found, expected };
+  return {
+    tier: tierFor(input),
+    subject,
+    dedication: "",
+    style: "collectible" as const,
+    datasetWords: datasetWordsWithDigits(datasetSize),
+  };
 }
 
 /** Digits (and date-helper digit searches). */
@@ -50,7 +80,6 @@ export async function buildWishInputForDigits(
     occurrence,
   });
   if (hideQuery) shareUrl = stripQueryFromUrl(shareUrl);
-  void fromDateHelper; // only controls the dialog's default privacy switch
   return {
     mode: "digits",
     found: result.found,
@@ -66,6 +95,7 @@ export async function buildWishInputForDigits(
     context,
     shareUrl,
     hideQuery,
+    ...baseFields(result.found, result.expectedCount, datasetSize, fromDateHelper ? "birthday" : "number"),
   };
 }
 
@@ -109,6 +139,7 @@ export async function buildWishInputForLetters(
     frame,
     shareUrl,
     hideQuery,
+    ...baseFields(result.total > 0, result.expectedCount, datasetSize, "word"),
   };
 }
 
@@ -160,19 +191,21 @@ export async function buildWishInputForPattern(
   });
   if (hideQuery) shareUrl = stripQueryFromUrl(shareUrl);
   const kind = mode === "pixels" ? "color" : "shape";
+  const expected = expectedPatternMatches(spec, fieldWidth, datasetSize);
   return {
     mode,
     found: result.total > 0,
     query: `${spec.rows}x${spec.cols}:${spec.cells.join(",")}`,
     count: result.total,
     firstPosition: pos,
-    expected: expectedPatternMatches(spec, fieldWidth, datasetSize),
-    expectedDepthLog10: Math.log10(Math.max(1, expectedPatternMatches(spec, fieldWidth, datasetSize))),
+    expected,
+    expectedDepthLog10: Math.log10(Math.max(1, expected)),
     datasetSize,
     longestPrefix: null,
     context: null,
     pattern: { rows: spec.rows, cols: spec.cols, cells: spec.cells, kind, exact, region },
     shareUrl,
     hideQuery,
+    ...baseFields(result.total > 0, expected, datasetSize, mode === "pixels" ? "pattern" : "shape"),
   };
 }

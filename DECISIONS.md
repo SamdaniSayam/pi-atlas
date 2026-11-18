@@ -364,3 +364,78 @@ without baking 2M-only wording into the test.
 free loopback port, starts `vite preview --strictPort`, and stops the whole
 process group in a `finally` block. Reason: no port collisions, no orphaned
 server after a failed run, and fast repeated runs against current source.
+
+## Wish Card redesign decisions
+
+### W-D10 — One result PNG path; the old Number Explorer export is gone
+Step 0 removed the simple `exportPng*` code from `src/lib/share.ts`; that file
+is now clipboard/native-share only. `src/wishcard/` is the sole result-PNG
+producer and the OG image stays separate in `scripts/make_og.mjs`. Reason: no
+two competing export paths, and every result card is now a rarity-tiered
+collectible.
+
+### W-D11 — Exact tier thresholds and honest odds
+`TIER_THRESHOLDS = { gold: 0.01, silver: 1 }`: not found → `twilight`; found
+with `expected < 0.01` → `gold`, `< 1` → `silver`, else `aurora`. A non-finite
+or non-positive `expected` is treated as `1` (→ `aurora`) with no log, so a bad
+statistic can never invent a rare card. `oneIn` uses the at-least-one
+probability `P = 1 - Math.exp(-expected)` and `Math.round(1 / P)`; the new
+`describeMagnitude` helper in `src/engine/format.ts` renders it (e.g.
+"1 in 1 million"). Odds appear on gold/silver only.
+
+### W-D12 — Tier names, labels and honest copy
+Pill/heading labels are Legendary / Rare / Lucky / Twilight (twilight also uses
+"SO CLOSE" or "BEYOND THE HORIZON"). Every card prints the exact fine print
+`Odds assume random digits · Statistics, not magic.`; the honesty guard bans
+overclaiming words in headlines, sublines, odds and quotes. Only the Hilbert
+quote carries `by: "— David Hilbert, 1930"`; no italic font markers anywhere.
+
+### W-D13 — Collectible default, clean is the old Night layout
+`collectible` is the new default tiered, emotional, collectible style. The
+former Night layout is preserved as the `clean` style; `paper` was removed.
+Reason: keep the old look available without two names for it.
+
+### W-D14 — Latin-only dedication
+`sanitizeDedication` keeps Latin letters (including accents), digits, spaces,
+`. - ’ & ,`, collapses spaces, trims and caps at 24 characters. Anything else
+(emoji, other scripts) is dropped with a hint "Latin letters only for now".
+The dedication is card/caption text only — never in the QR URL or filename.
+Reason: the bundled fonts have no emoji glyphs and canvas text must stay local
+and predictable.
+
+### W-D15 — PNG size budgets and grain removal (W-D9)
+Budgets: Square ≤1.5 MB, Story ≤2.2 MB, Wide ≤1.0 MB. The first collectible
+square was 2.28 MB; reducing seeded grain 5% → 2% only reached 2.07 MB, so
+per the required order grain was removed (digit texture retained) and the
+gold sheen kept its flat rings (W-D7). Measured after removal: Square 931,746 B,
+Story 1,312,910 B, Wide 644,227 B — all under budget. Digit texture was not
+reduced because grain removal alone was sufficient.
+
+### W-D16 — Warm gold sheen hues
+The gold holographic sheen rainbow stops `[40,120,200,280]` were changed to
+`[30,45,60,35]`. A green/blue stop tinted a corner green and failed the
+gallery's colour-family check; warm foil-only hues keep the corner gold.
+
+### W-D17 — Gallery/card checks respect style-specific QR plates
+`qrPlateFor(format, style)` returns the clean story plate
+(`x:410,y:1300,size:260`) and otherwise the collectible plates (square
+`836,836,172`, collectible story `72,1330,220`, wide `872,120,220`). The dev
+gallery uses the card's own plate for QR decoding and skips collectible box
+checks for `clean` cards (which use fixed legacy coordinates). The gallery
+still decodes QR and checks colour family for every style. Reason: avoid
+false failures from sampling the wrong plate geometry.
+
+### W-D18 — Hash navigation needs a reload in browser checks
+HashRouter ignores hash-only `page.goto` when the app is already mounted, so
+E2E/smoke `gotoHash` calls `page.goto` followed by `page.reload()` to rebuild
+state for each search. Reason: otherwise consecutive tier searches show stale
+results. Smoke tier-query lengths are derived from the manifest's
+`total_digits` so tiers stay correct on both 2M and 1B builds.
+
+### W-D19 — 1B digit-length tier discrepancy (disclosed)
+The brief's stated boundaries (≤8 digits aurora, 9–10 silver, ≥11 gold) assume
+a different expected-count curve than the engine actually uses,
+`(N-L+1)/10^L`. With N=1B that gives L=9 → ~1 (aurora), L=10 → ~0.1 (silver),
+L=12 → ~0.001 (gold). The implementation follows the exact threshold rules in
+W-D11 (which are authoritative), not the illustrative digit boundaries. This
+is called out here so the tier display is not mistaken for a bug.

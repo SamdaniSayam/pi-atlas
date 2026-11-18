@@ -14,11 +14,31 @@ const ROOT = path.resolve(process.cwd());
 const JSQR = path.join(ROOT, "node_modules/jsqr/dist/jsQR.js");
 const BANNER = '[role="region"][aria-label="Shared result"]';
 const WISH = 'section[aria-label="Your wish card"]';
-const PLATES = {
-  square: { x: 836, y: 836, size: 172 },
-  story: { x: (1080 - 260) / 2, y: 1300, size: 260 },
-  wide: { x: 872, y: 120, size: 220 },
+const QR_PLATES = {
+  collectible: {
+    square: { x: 836, y: 836, size: 172 },
+    story: { x: 72, y: 1330, size: 220 },
+    wide: { x: 872, y: 120, size: 220 },
+  },
+  clean: {
+    square: { x: 836, y: 836, size: 172 },
+    story: { x: (1080 - 260) / 2, y: 1300, size: 260 },
+    wide: { x: 872, y: 120, size: 220 },
+  },
 };
+const PNG_SIZES = {
+  square: { width: 1080, height: 1080 },
+  story: { width: 1080, height: 1920 },
+  wide: { width: 1200, height: 630 },
+};
+const PNG_BUDGETS = {
+  square: 1.5 * 1024 * 1024,
+  story: 2.2 * 1024 * 1024,
+  wide: 1.0 * 1024 * 1024,
+};
+const FORMAT_LABELS = { square: "Square", story: "Story", wide: "Wide" };
+// First digits of π, used to build tier queries sized from the loaded dataset.
+const PI_DIGITS = "14159265358979323846264338327950288419716939937510";
 const DATE_STRINGS = ["07092006", "09072006", "20060907", "070906", "090706", "060907"];
 
 function parseArgs() {
@@ -62,7 +82,7 @@ async function openDialog(page) {
   await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 10_000 });
 }
 
-async function decodeQr(page, selector, format = "square") {
+async function decodeQr(page, selector, format = "square", style = "collectible") {
   await page.addScriptTag({ path: JSQR });
   return page.evaluate(({ sel, plate }) => {
     const canvas = document.querySelector(sel);
@@ -72,7 +92,7 @@ async function decodeQr(page, selector, format = "square") {
     const data = ctx.getImageData(plate.x, plate.y, plate.size, plate.size).data;
     const jsQR = window.jsQR;
     return jsQR(data, plate.size, plate.size, { inversionAttempts: "dontInvert" })?.data ?? null;
-  }, { sel: selector, plate: PLATES[format] });
+  }, { sel: selector, plate: QR_PLATES[style][format] });
 }
 
 async function pngInfo(file) {
@@ -178,32 +198,66 @@ async function main() {
 
   await harness.check("wishcard-download", async () => {
     const cases = [
-      { url: route("#/explore/digits?q=12"), file: "pi-atlas-wish-digits-12-square.png" },
-      { url: route("#/explore/digits?q=98765432109876543210"), file: "pi-atlas-wish-digits-98765432109876543210-square.png" },
+      { query: "12", slug: "12", heading: "Lucky" },
+      { query: "98765432109876543210", slug: "98765432109876543210", heading: "Twilight" },
     ];
     const details = [];
     for (const c of cases) {
-      await page.goto(c.url);
-      await page.reload({ waitUntil: "domcontentloaded" });
+      await gotoHash(page, `#/explore/digits?q=${c.query}`);
       await page.getByText("FOUND", { exact: true })
         .or(page.getByText("NOT FOUND", { exact: true }))
         .first().waitFor({ state: "visible", timeout: 60_000 });
+      await page.getByRole("heading", { name: `You earned a ${c.heading} card` })
+        .waitFor({ state: "visible", timeout: 30_000 });
       await page.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: 90_000 });
       await openDialog(page);
-      await page.locator("label.chip").filter({ hasText: "Square" }).first().click();
-      const [download] = await Promise.all([
-        page.waitForEvent("download", { timeout: 60_000 }),
-        page.getByRole("button", { name: "Download PNG" }).click(),
-      ]);
-      assert.equal(download.suggestedFilename(), c.file, "unexpected PNG file name");
-      const info = await pngInfo(await download.path());
-      assert.equal(info.width, 1080);
-      assert.equal(info.height, 1080);
-      assert.ok(info.bytes < 600 * 1024, "square PNG is over 600 KB");
-      details.push(`${c.file} ${info.width}×${info.height} ${info.bytes}B`);
+      for (const format of ["square", "story", "wide"]) {
+        await page.locator("label.chip").filter({ hasText: FORMAT_LABELS[format] }).first().click();
+        const [download] = await Promise.all([
+          page.waitForEvent("download", { timeout: 60_000 }),
+          page.getByRole("button", { name: "Download PNG" }).click(),
+        ]);
+        const file = `pi-atlas-wish-digits-${c.slug}-${format}.png`;
+        assert.equal(download.suggestedFilename(), file, "unexpected PNG file name");
+        const info = await pngInfo(await download.path());
+        const expected = PNG_SIZES[format];
+        assert.equal(info.width, expected.width, `${format} PNG width`);
+        assert.equal(info.height, expected.height, `${format} PNG height`);
+        assert.ok(info.bytes < PNG_BUDGETS[format],
+          `${format} PNG ${info.bytes} B is over ${PNG_BUDGETS[format]} B budget`);
+        details.push(`${file} ${info.width}×${info.height} ${info.bytes}B`);
+      }
       await page.getByRole("button", { name: "Close", exact: true }).click();
     }
     return details.join("; ");
+  }, { usePage: page });
+
+  await harness.check("wishcard-tiers", async () => {
+    // Query lengths scale with the loaded dataset so the expected count (and
+    // therefore the tier) is stable on both the local 2M and shipped 1B builds.
+    const exp10 = Math.floor(Math.log10(totalDigits));
+    const cases = [
+      { tier: "Legendary", query: PI_DIGITS.slice(0, exp10 + 3) },
+      { tier: "Rare", query: PI_DIGITS.slice(0, exp10 + 1) },
+      { tier: "Lucky", query: PI_DIGITS.slice(0, exp10 - 1) },
+      { tier: "Twilight", query: "12345678901234567890" },
+    ];
+    const seen = [];
+    for (const c of cases) {
+      await gotoHash(page, `#/explore/digits?q=${c.query}`);
+      await page.getByText("FOUND", { exact: true })
+        .or(page.getByText("NOT FOUND", { exact: true }))
+        .first().waitFor({ state: "visible", timeout: 60_000 });
+      await page.getByRole("heading", { name: `You earned a ${c.tier} card` })
+        .waitFor({ state: "visible", timeout: 30_000 });
+      await openDialog(page);
+      const label = await page.locator('[role="dialog"] [role="img"][aria-label^="Wish card,"]')
+        .getAttribute("aria-label");
+      assert.ok(label?.includes(`${c.tier} tier`), `wrong tier pill for ${c.query}: ${label}`);
+      await page.getByRole("button", { name: "Close", exact: true }).click();
+      seen.push(`${c.tier}:${c.query.length}d`);
+    }
+    return seen.join(", ");
   }, { usePage: page });
 
   await harness.check("wishcard-qr-host", async () => {

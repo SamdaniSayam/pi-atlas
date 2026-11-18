@@ -1,86 +1,279 @@
 import { describe, expect, it } from "vitest";
-import { buildCaption, stripQueryFromUrl } from "../../src/wishcard/caption";
-import { eyebrow, hashString, pickCopy } from "../../src/wishcard/copy";
-import { fileNameFor, fitText, slugFor } from "../../src/wishcard/layout";
+import { describeMagnitude } from "../../src/engine/format";
+import { buildCaption, stripQueryFromUrl, stripSrcCard } from "../../src/wishcard/caption";
+import {
+  HEADLINES, HONESTY_BANNED, QUOTES, SUBLINES,
+  eyebrow, pickCopy, previewLine, sanitizeDedication,
+} from "../../src/wishcard/copy";
+import {
+  FORMATS, LAYOUTS, cacheKeyFor, fileNameFor, fitText,
+  layoutBoxes, qrPlateFor, slugFor,
+} from "../../src/wishcard/layout";
 import { explorerUrl, qrContentFor } from "../../src/wishcard/qr";
+import { THEMES, contrastRatio } from "../../src/wishcard/themes";
+import { TIER_LABELS, TIER_THRESHOLDS, oneIn, tierFor, tierPill } from "../../src/wishcard/tiers";
+import { DEFAULT_WISH_OPTIONS } from "../../src/wishcard/types";
 import { buildShareUrl } from "../../src/lib/url";
-import type { WishCardInput } from "../../src/wishcard/types";
+import type { WishCardInput, WishTier } from "../../src/wishcard/types";
 
 function input(patch: Partial<WishCardInput> = {}): WishCardInput {
+  const found = patch.found ?? true;
+  const expected = patch.expected ?? 9999;
+  const tier = patch.tier ?? tierFor({ found, expected });
   return {
     mode: "digits",
-    found: true,
+    found,
     query: "12",
-    count: 19800,
-    firstPosition: 148,
-    expected: 9999,
+    count: found ? 19800 : 0,
+    firstPosition: found ? 148 : null,
+    expected,
     expectedDepthLog10: 2,
     datasetSize: 1_000_000_000,
+    datasetWords: "1 billion digits",
     longestPrefix: null,
     context: null,
     shareUrl: "https://samdanisayam.github.io/pi-atlas/#/explore/digits?q=12",
     hideQuery: false,
+    tier,
+    subject: "number",
+    dedication: "",
+    style: "collectible",
     ...patch,
   };
 }
 
-describe("wish-card copy", () => {
+const TIERS: WishTier[] = ["gold", "silver", "aurora", "twilight"];
+
+describe("wish-card rarity tiers", () => {
+  it("uses the exact thresholds", () => {
+    expect(TIER_THRESHOLDS).toEqual({ gold: 0.01, silver: 1 });
+  });
+
+  it("classifies not-found as twilight at any expected value", () => {
+    for (const expected of [0.0000001, 0.5, 1, 9999, Number.NaN]) {
+      expect(tierFor({ found: false, expected })).toBe("twilight");
+    }
+  });
+
+  it("classifies found results by expected count", () => {
+    expect(tierFor({ found: true, expected: 0.009 })).toBe("gold");
+    expect(tierFor({ found: true, expected: 0.01 })).toBe("silver");
+    expect(tierFor({ found: true, expected: 0.5 })).toBe("silver");
+    expect(tierFor({ found: true, expected: 0.9999 })).toBe("silver");
+    expect(tierFor({ found: true, expected: 1 })).toBe("aurora");
+    expect(tierFor({ found: true, expected: 1.0001 })).toBe("aurora");
+    expect(tierFor({ found: true, expected: 9999 })).toBe("aurora");
+  });
+
+  it("treats invalid expected as 1 and never logs or throws", () => {
+    for (const expected of [Number.NaN, -1, 0, Number.POSITIVE_INFINITY]) {
+      expect(tierFor({ found: true, expected })).toBe("aurora");
+    }
+  });
+
+  it("exposes the four result labels and exact pill names", () => {
+    expect(TIER_LABELS).toEqual({
+      gold: "Legendary", silver: "Rare", aurora: "Lucky", twilight: "Twilight",
+    });
+    const tierInputs: Record<WishTier, WishCardInput> = {
+      gold: input({ expected: 0.001 }),
+      silver: input({ expected: 0.1 }),
+      aurora: input({ expected: 10 }),
+      twilight: input({ found: false, expected: 10 }),
+    };
+    for (const tier of TIERS) {
+      expect(tierPill(tierInputs[tier])).toBe(eyebrow(tierInputs[tier]));
+    }
+    expect(tierPill(tierInputs.gold)).toBe("LEGENDARY FIND");
+    expect(tierPill(tierInputs.silver)).toBe("RARE FIND");
+    expect(tierPill(tierInputs.aurora)).toBe("LUCKY FIND");
+    expect(tierPill(input({
+      found: false, tier: "twilight", longestPrefix: { prefix: "123", position: 42 },
+    }))).toBe("SO CLOSE");
+    expect(tierPill(input({
+      found: false, tier: "twilight", query: "1234", longestPrefix: { prefix: "1", position: 42 },
+    }))).toBe("BEYOND THE HORIZON");
+  });
+});
+
+describe("wish-card one-in-N odds", () => {
+  it("uses at-least-one probability P = 1 - exp(-expected), rounded and described", () => {
+    for (const expected of [0.01, 0.009, 0.001, 0.000001, 0.1, 1, 10]) {
+      const p = 1 - Math.exp(-expected);
+      expect(oneIn(expected)).toBe(describeMagnitude(Math.round(1 / p)));
+    }
+  });
+
+  it("produces readable magnitudes", () => {
+    expect(oneIn(0.000001)).toBe("1 million");
+    expect(oneIn(0.001)).toBe("1 thousand");
+    expect(oneIn(Number.NaN)).toBe("2");
+  });
+});
+
+describe("wish-card copy deck", () => {
   it("is deterministic for the same search", () => {
     expect(pickCopy(input())).toEqual(pickCopy(input()));
-    expect(pickCopy(input({ query: "314159" }))).toEqual(pickCopy(input({ query: "314159" })));
+    const golden = input({ expected: 0.001 });
+    expect(pickCopy(golden)).toEqual(pickCopy({ ...golden }));
+    expect(pickCopy(input({ query: "314159" }))).toEqual(
+      pickCopy(input({ query: "314159" })),
+    );
   });
 
-  it("reaches every headline in both pools", () => {
-    const found = new Set<string>();
-    const missing = new Set<string>();
-    for (let i = 0; i < 200; i += 1) {
-      found.add(pickCopy(input({ query: String(i) })).headline);
-      missing.add(pickCopy(input({ query: String(i), found: false })).headline);
+  it("reaches every headline in every tier pool", () => {
+    for (const tier of TIERS) {
+      const reached = new Set<string>();
+      for (let i = 0; i < 600; i += 1) {
+        reached.add(pickCopy(input({ tier, query: String(i) })).headline);
+      }
+      expect(reached.size).toBe(HEADLINES[tier].length);
     }
-    expect(found.size).toBe(5);
-    expect(missing.size).toBe(5);
   });
 
-  it("uses the rarity eyebrows at every count boundary", () => {
-    expect(eyebrow(input({ count: 1 }))).toBe("RARE FIND");
-    expect(eyebrow(input({ count: 9 }))).toBe("RARE FIND");
-    expect(eyebrow(input({ count: 10 }))).toBe("CONGRATULATIONS");
-    expect(eyebrow(input({ count: 99 }))).toBe("CONGRATULATIONS");
-    expect(eyebrow(input({ count: 100 }))).toBe("NICE FIND");
-    expect(eyebrow(input({ count: 0 }))).toBe("RARE FIND");
+  it("reaches every subline and quote in every tier pool", () => {
+    for (const tier of TIERS) {
+      const sublines = new Set<string>();
+      const quotes = new Set<string>();
+      for (let i = 0; i < 600; i += 1) {
+        const copy = pickCopy(input({ tier, query: String(i) }));
+        sublines.add(copy.subline);
+        quotes.add(copy.quote.text);
+      }
+      expect(sublines.size).toBe(SUBLINES[tier].length);
+      expect(quotes.size).toBe(QUOTES[tier].length);
+    }
   });
 
-  it("uses SO CLOSE only for a near-complete prefix of digits or letters", () => {
-    const close = { prefix: "12345", position: 42 };
-    expect(eyebrow(input({ found: false, longestPrefix: close }))).toBe("SO CLOSE");
-    expect(eyebrow(input({ mode: "letters", found: false, longestPrefix: close }))).toBe("SO CLOSE");
-    expect(eyebrow(input({ found: false, query: "123456", longestPrefix: { prefix: "12", position: 42 } }))).toBe("NOT THIS TIME");
-    expect(eyebrow(input({ mode: "pixels", found: false, longestPrefix: close }))).toBe("NOT THIS TIME");
+  it("keeps all copy short enough for the card and free of raw tokens", () => {
+    for (const tier of TIERS) {
+      for (let i = 0; i < 50; i += 1) {
+        const copy = pickCopy(input({ tier, query: `word${i}`, subject: "word" }));
+        for (const text of [copy.headline, copy.subline, copy.odds, copy.quote.text, copy.collectorTag]) {
+          expect(text.length).toBeLessThan(220);
+          expect(text).not.toMatch(/[{}]/);
+        }
+        for (const line of [copy.headline, copy.subline, copy.odds, copy.quote.text]) {
+          for (const banned of HONESTY_BANNED) {
+            expect(line.toLowerCase()).not.toContain(banned);
+          }
+        }
+      }
+    }
   });
 
-  it("writes a singular found subline for one occurrence", () => {
-    const copy = pickCopy(input({ count: 1, firstPosition: 1_234_567 }));
-    expect(copy.subline).toContain("appears once");
-    expect(copy.subline).toContain("1,234,567");
+  it("attributes only the Hilbert quote and only in the twilight pool", () => {
+    const attributed = TIERS.flatMap((tier) =>
+      QUOTES[tier].filter((quote) => quote.by).map((quote) => ({ tier, text: quote.text, by: quote.by })),
+    );
+    expect(attributed).toEqual([{
+      tier: "twilight",
+      text: "We must know. We will know.",
+      by: "— David Hilbert, 1930",
+    }]);
+    expect(QUOTES.twilight.some((q) => q.text === "We must know. We will know.")).toBe(true);
   });
 
-  it("writes a depth line for missing searches", () => {
-    const copy = pickCopy(input({ found: false, count: 0, expectedDepthLog10: 24 }));
-    expect(copy.subline).toContain("10²⁴");
-    expect(hashString("abc")).toBe(hashString("abc"));
+  it("prints the exact honesty fine print on every card", () => {
+    for (const tier of TIERS) {
+      expect(pickCopy(input({ tier })).finePrint).toBe(
+        "Odds assume random digits · Statistics, not magic.",
+      );
+    }
+    expect(pickCopy(input()).finePrint).toContain("Statistics, not magic.");
+    // "magic" is allowed only in the fine print.
+    for (const tier of TIERS) {
+      const copy = pickCopy(input({ tier }));
+      for (const text of [copy.headline, copy.subline, copy.odds, copy.quote.text]) {
+        expect(text.toLowerCase()).not.toContain("magic");
+      }
+    }
+  });
+
+  it("uses no italic font markers in quotes", () => {
+    for (const tier of TIERS) {
+      for (const quote of QUOTES[tier]) {
+        expect(quote.text).not.toMatch(/<i|<\/?em|font-style/i);
+      }
+    }
   });
 
   it("states the actual scanned dataset size, never a hardcoded 2M", () => {
-    expect(pickCopy(input()).subline).toContain("first 1 billion digits of π");
-    expect(pickCopy(input({ datasetSize: 2_000_000 })).subline).toContain("first 2 million digits of π");
-    expect(buildCaption(input({ found: false, count: 0, datasetSize: 2_000_000 }))).toContain("Not in the first 2 million digits");
+    expect(pickCopy(input()).subline).toContain("1 billion digits");
+    expect(pickCopy(input({ datasetSize: 2_000_000, datasetWords: "2 million digits" })).subline)
+      .toContain("2 million digits");
+    expect(buildCaption(input({ found: false, datasetSize: 2_000_000, datasetWords: "2 million digits" })))
+      .toContain("2 million digits");
+  });
+
+  it("formats the one-in odds only for gold and silver", () => {
+    expect(pickCopy(input({ expected: 0.000001 })).oneIn).toBe("1 million");
+    expect(pickCopy(input({ expected: 0.1 })).oneIn).toBe("11");
+    expect(pickCopy(input({ expected: 10 })).oneIn).toBe("");
+    expect(pickCopy(input({ found: false })).oneIn).toBe("");
+    expect(pickCopy(input({ expected: 0.000001 })).odds).toContain("1 in 1 million");
+  });
+
+  it("writes a deterministic one-line preview summary", () => {
+    const gold = pickCopy(input({ expected: 0.000001 }));
+    expect(previewLine(input({ expected: 0.000001 }), gold)).toContain("Legendary card");
+    expect(previewLine(input({ expected: 0.000001 }), gold)).toContain("1 in 1 million chance");
+    const aurora = pickCopy(input());
+    expect(previewLine(input(), aurora)).toContain("Lucky card");
+    expect(previewLine(input(), aurora)).toContain("Found");
+  });
+});
+
+describe("wish-card dedication sanitizer", () => {
+  it("keeps Latin letters, accents, digits and the allowed punctuation", () => {
+    expect(sanitizeDedication("Ana-Maria, 3rd & co.").value).toBe("Ana-Maria, 3rd & co.");
+    expect(sanitizeDedication("Élodie O’Neill").value).toBe("Élodie O’Neill");
+    expect(sanitizeDedication("Zoë 123").value).toBe("Zoë 123");
+  });
+
+  it("collapses spaces, trims, and caps at 24 characters", () => {
+    expect(sanitizeDedication("  A   B  ").value).toBe("A B");
+    const long = "A".repeat(40);
+    expect(sanitizeDedication(long).value).toBe("A".repeat(24));
+    expect(sanitizeDedication(long).removed).toBe(true);
+  });
+
+  it("drops emoji and other scripts and reports the removal", () => {
+    expect(sanitizeDedication("Hi 🌟").value).toBe("Hi");
+    expect(sanitizeDedication("Hi 🌟").removed).toBe(true);
+    expect(sanitizeDedication("東京").value).toBe("");
+    expect(sanitizeDedication("東京").removed).toBe(true);
+    expect(sanitizeDedication("Clean text").removed).toBe(false);
+  });
+});
+
+describe("wish-card theme contrast", () => {
+  it("keeps every tier's main text readable on both backgrounds", () => {
+    for (const tier of TIERS) {
+      const theme = THEMES[tier];
+      expect(contrastRatio(theme.text, theme.bg0)).toBeGreaterThan(7);
+      expect(contrastRatio(theme.text, theme.bg1)).toBeGreaterThan(7);
+      expect(contrastRatio(theme.pillText, theme.accent)).toBeGreaterThan(4.5);
+      expect(contrastRatio(theme.dim, theme.bg0)).toBeGreaterThan(4.5);
+    }
+    expect(contrastRatio("#FFFFFF", "#FFFFFF")).toBe(1);
   });
 });
 
 describe("wish-card caption", () => {
-  it("builds found and not-found captions", () => {
-    expect(buildCaption(input())).toContain("found it at position 148");
-    expect(buildCaption(input({ found: false, count: 0 }))).toContain("Not in the first 1 billion digits");
+  it("builds a tier-appropriate found caption", () => {
+    expect(buildCaption(input({ expected: 0.000001 }))).toContain("Legendary find!");
+    expect(buildCaption(input({ expected: 0.000001 }))).toContain("Only a 1 in 1 million chance");
+    expect(buildCaption(input({ expected: 0.1 }))).toContain("Rare find!");
+    expect(buildCaption(input())).toContain("I found 12 in π at position 148!");
+    const caption = buildCaption(input());
+    expect(caption).toContain("Try yours:");
+    expect(caption).toContain("#PiAtlas #pi");
+  });
+
+  it("builds the not-found caption from the actual dataset size", () => {
+    expect(buildCaption(input({ found: false, datasetWords: "1 billion digits" })))
+      .toContain("12 wasn’t in the first 1 billion digits of π. Still special.");
   });
 
   it("hides the query in caption and URL when requested", () => {
@@ -92,7 +285,25 @@ describe("wish-card caption", () => {
     expect(stripQueryFromUrl("https://x.test/pi/#/explore/digits?q=12&occ=2")).toBe(
       "https://x.test/pi/#/explore/digits?occ=2",
     );
-    expect(stripQueryFromUrl("https://x.test/pi/#/explore/digits?q=12")).toBe("https://x.test/pi/#/explore/digits");
+    expect(stripQueryFromUrl("https://x.test/pi/#/explore/digits?q=12")).toBe(
+      "https://x.test/pi/#/explore/digits",
+    );
+  });
+
+  it("inserts a dedication before 'Try yours:' and never in the URL", () => {
+    const card = input({ dedication: "For Ana" });
+    const caption = buildCaption(card);
+    expect(caption).toContain("For Ana. Try yours:");
+    expect(caption.indexOf("For Ana")).toBeLessThan(caption.indexOf("Try yours:"));
+    expect(card.shareUrl).not.toContain("Ana");
+    expect(buildCaption(input({ hideQuery: true, dedication: "Ana" }))).not.toContain("q=Ana");
+  });
+
+  it("strips the banner marker from every caption link", () => {
+    const marked = "https://pi.test/pi/#/explore/digits?q=12&src=card";
+    expect(stripSrcCard(marked)).toBe("https://pi.test/pi/#/explore/digits?q=12");
+    expect(buildCaption(input(), marked)).not.toContain("src=card");
+    expect(buildCaption(input({ hideQuery: true }), marked)).not.toContain("src=card");
   });
 });
 
@@ -171,6 +382,60 @@ describe("wish-card layout helpers", () => {
     expect(slugFor(input({ pattern: { rows: 6, cols: 6, cells: [], kind: "shape", exact: true } }))).toBe("r6x6");
     expect(slugFor(input({ hideQuery: true }))).toBe("hidden");
     expect(fileNameFor(input(), "square")).toBe("pi-atlas-wish-digits-12-square.png");
-    expect(fileNameFor(input({ hideQuery: true, mode: "letters" }), "wide")).toBe("pi-atlas-wish-letters-hidden-wide.png");
+    expect(fileNameFor(input({ hideQuery: true, mode: "letters" }), "wide"))
+      .toBe("pi-atlas-wish-letters-hidden-wide.png");
+  });
+
+  it("has the exact format sizes and fixed QR plates", () => {
+    expect(FORMATS).toEqual({
+      square: { width: 1080, height: 1080, margin: 72 },
+      story: { width: 1080, height: 1920, margin: 72 },
+      wide: { width: 1200, height: 630, margin: 24 },
+    });
+    expect(qrPlateFor("square", "collectible")).toEqual({ x: 836, y: 836, size: 172 });
+    expect(qrPlateFor("story", "collectible")).toEqual({ x: 72, y: 1330, size: 220 });
+    expect(qrPlateFor("wide", "collectible")).toEqual({ x: 872, y: 120, size: 220 });
+    expect(qrPlateFor("story", "clean")).toEqual({ x: 410, y: 1300, size: 260 });
+  });
+
+  it("keeps text boxes inside margins, above 12 px, and off the QR plate", () => {
+    for (const format of ["square", "story", "wide"] as const) {
+      const spec = FORMATS[format];
+      const plate = qrPlateFor(format, "collectible");
+      const boxes = layoutBoxes(format, input({ dedication: "For Ana" }))
+        .filter((box) => !box.decorative);
+      expect(boxes.length).toBeGreaterThan(8);
+      for (const box of boxes) {
+        expect(box.minSize).toBeGreaterThanOrEqual(12);
+        expect(box.x).toBeGreaterThanOrEqual(spec.margin - 2);
+        expect(box.y).toBeGreaterThanOrEqual(spec.margin - 2);
+        expect(box.x + box.w).toBeLessThanOrEqual(spec.width - spec.margin + 2);
+        expect(box.y + box.h).toBeLessThanOrEqual(spec.height - spec.margin + 2);
+        const onPlate = box.x < plate.x + plate.size && box.x + box.w > plate.x &&
+          box.y < plate.y + plate.size && box.y + box.h > plate.y;
+        expect(onPlate).toBe(false);
+      }
+      for (let i = 0; i < boxes.length; i += 1) {
+        for (let j = i + 1; j < boxes.length; j += 1) {
+          const a = boxes[i];
+          const b = boxes[j];
+          const overlap = a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+          expect(overlap, `${format}: ${a.id} / ${b.id}`).toBe(false);
+        }
+      }
+      expect(LAYOUTS[format].qr.size).toBeGreaterThan(100);
+    }
+  });
+
+  it("keys the cache on every visible choice", () => {
+    const base = input();
+    const key = cacheKeyFor(base, DEFAULT_WISH_OPTIONS);
+    expect(key).toBe(cacheKeyFor(input(), { ...DEFAULT_WISH_OPTIONS }));
+    expect(cacheKeyFor(base, { ...DEFAULT_WISH_OPTIONS, format: "story" })).not.toBe(key);
+    expect(cacheKeyFor(base, { ...DEFAULT_WISH_OPTIONS, style: "clean" })).not.toBe(key);
+    expect(cacheKeyFor(base, { ...DEFAULT_WISH_OPTIONS, hideQuery: true })).not.toBe(key);
+    expect(cacheKeyFor({ ...base, dedication: "Ana" }, DEFAULT_WISH_OPTIONS)).not.toBe(key);
+    expect(cacheKeyFor({ ...base, subject: "loved" }, DEFAULT_WISH_OPTIONS)).not.toBe(key);
+    expect(cacheKeyFor({ ...base, tier: "gold" }, DEFAULT_WISH_OPTIONS)).not.toBe(key);
   });
 });

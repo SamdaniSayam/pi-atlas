@@ -4,11 +4,14 @@ import Dialog from "../components/Dialog";
 import { useToast } from "../components/Toast";
 import { copyText } from "../lib/share";
 import { buildCaption } from "./caption";
-import { pickCopy } from "./copy";
+import { pickCopy, previewLine, sanitizeDedication } from "./copy";
 import { fileNameFor } from "./layout";
 import { downloadCard, prepareCardFile, shareCard } from "./share";
 import type { RenderedCard } from "./render";
-import type { WishCardInput, WishFormat, WishOptions, WishStyle } from "./types";
+import {
+  SUBJECT_CHIPS, type WishCardInput, type WishFormat,
+  type WishOptions, type WishStyle, type WishSubject,
+} from "./types";
 
 const FORMATS: Array<{ id: WishFormat; label: string; size: string }> = [
   { id: "square", label: "Square", size: "1080×1080" },
@@ -16,16 +19,18 @@ const FORMATS: Array<{ id: WishFormat; label: string; size: string }> = [
   { id: "wide", label: "Wide", size: "1200×630" },
 ];
 const STYLES: Array<{ id: WishStyle; label: string }> = [
-  { id: "night", label: "Night" },
-  { id: "paper", label: "Paper" },
+  { id: "collectible", label: "Collectible" },
+  { id: "clean", label: "Clean" },
 ];
 
 interface Props {
   open: boolean;
   onClose: () => void;
   input: WishCardInput;
+  defaultSubject: WishSubject;
   options: WishOptions;
   onChange: (next: WishOptions) => void;
+  onInputChange: (next: WishCardInput) => void;
   rendered: RenderedCard | null;
   file: File | null;
   fromDateHelper: boolean;
@@ -73,7 +78,7 @@ function Segment<T extends string>({
 }
 
 /** Draws a copy of the rendered canvas into the dialog's larger preview. */
-function DialogPreview({ rendered }: { rendered: RenderedCard | null }) {
+function DialogPreview({ rendered, label }: { rendered: RenderedCard | null; label: string }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = host.current;
@@ -88,11 +93,11 @@ function DialogPreview({ rendered }: { rendered: RenderedCard | null }) {
     copy.style.display = "block";
     copy.style.borderRadius = "8px";
     copy.setAttribute("role", "img");
-    copy.setAttribute("aria-label", "Large wish card preview");
+    copy.setAttribute("aria-label", label);
     const ctx = copy.getContext("2d");
     if (ctx) ctx.drawImage(rendered.canvas, 0, 0);
     el.appendChild(copy);
-  }, [rendered]);
+  }, [rendered, label]);
   return (
     <div
       ref={host}
@@ -106,17 +111,21 @@ export default function WishCardDialog({
   open,
   onClose,
   input,
+  defaultSubject,
   options,
   onChange,
+  onInputChange,
   rendered,
   file,
   fromDateHelper,
 }: Props) {
   const toast = useToast((s) => s.show);
   const [localFile, setLocalFile] = useState<File | null>(null);
+  const [dedicationHint, setDedicationHint] = useState(false);
   const filename = fileNameFor(input, options.format);
   const caption = buildCaption(input);
   const copy = pickCopy(input);
+  const chips = SUBJECT_CHIPS[input.mode] ?? [];
 
   // Prepare the PNG as soon as the dialog opens and whenever options change.
   useEffect(() => {
@@ -138,6 +147,16 @@ export default function WishCardDialog({
     toast(ok ? "Caption copied" : "Couldn’t make the card. Try again.");
   };
 
+  const chooseSubject = (subject: WishSubject) => {
+    onInputChange({ ...input, subject: subject === input.subject ? defaultSubject : subject });
+  };
+
+  const changeDedication = (raw: string) => {
+    const result = sanitizeDedication(raw);
+    setDedicationHint(result.removed);
+    onInputChange({ ...input, dedication: result.value });
+  };
+
   return (
     <Dialog open={open} onClose={onClose} title="Customize your wish card" sheet maxWidthPx={880}>
       <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_300px]">
@@ -146,24 +165,68 @@ export default function WishCardDialog({
             {copy.eyebrow}
           </p>
           <h3 className="mb-2 mt-1 text-xl">{copy.headline}</h3>
-          <DialogPreview rendered={rendered} />
-          <p className="mb-0 mt-2 text-sm" style={{ color: "var(--text-2)" }}>{copy.subline}</p>
+          <DialogPreview
+            rendered={rendered}
+            label={`Wish card, ${copy.tierLabel} tier. Headline: ${copy.headline} Quote: ${copy.quote.text}${input.dedication ? ` Dedication: ${input.dedication}` : ""}`}
+          />
+          <p className="mb-0 mt-2 text-sm" style={{ color: "var(--text-2)" }}>{previewLine(input, copy)}</p>
           {!rendered && (
             <p className="mt-2 text-sm" style={{ color: "var(--text-2)" }}>Rendering your card…</p>
           )}
         </div>
         <div className="flex flex-col gap-4">
-          <Segment<WishFormat>
-            label="Format"
-            value={options.format}
-            items={FORMATS.map((f) => ({ id: f.id, label: f.label, hint: f.size }))}
-            onChange={(format) => onChange({ ...options, format })}
-          />
+          {chips.length > 0 && (
+            <fieldset className="m-0 border-0 p-0">
+              <legend className="label mb-2">This is…</legend>
+              <div className="flex flex-wrap gap-2">
+                {chips.map((chip) => (
+                  <label
+                    key={chip.id}
+                    className="chip cursor-pointer"
+                    style={input.subject === chip.id
+                      ? { borderColor: "var(--accent)", color: "var(--accent)", background: "var(--surface-2)" }
+                      : undefined}
+                  >
+                    <input
+                      type="radio"
+                      name="wish-subject"
+                      className="sr-only"
+                      checked={input.subject === chip.id}
+                      onChange={() => chooseSubject(chip.id)}
+                    />
+                    {chip.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          <label className="block">
+            <span className="label mb-2 block">Dedication (optional)</span>
+            <input
+              type="text"
+              className="input w-full"
+              maxLength={24}
+              value={input.dedication}
+              placeholder="For someone special"
+              onChange={(e) => changeDedication(e.target.value)}
+            />
+            {dedicationHint && (
+              <span className="mt-1 block text-xs" style={{ color: "var(--text-2)" }}>
+                Latin letters only for now
+              </span>
+            )}
+          </label>
           <Segment<WishStyle>
             label="Style"
             value={options.style}
             items={STYLES}
             onChange={(style) => onChange({ ...options, style })}
+          />
+          <Segment<WishFormat>
+            label="Format"
+            value={options.format}
+            items={FORMATS.map((f) => ({ id: f.id, label: f.label, hint: f.size }))}
+            onChange={(format) => onChange({ ...options, format })}
           />
           <label className="flex items-start gap-3 text-sm">
             <input

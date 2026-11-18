@@ -27,6 +27,30 @@ export function formatMagnitude(n: number): string {
   return `10^${exp}`;
 }
 
+/**
+ * Plain-English magnitude, e.g. 83,000,000 → "83 million". Used by the
+ * wish-card one-in-N odds line; small numbers keep their separators.
+ */
+export function describeMagnitude(n: number): string {
+  if (!Number.isFinite(n)) return "∞";
+  const abs = Math.abs(n);
+  if (abs < 1000) return groupInt.format(Math.round(n));
+  const units: Array<[number, string]> = [
+    [1e12, "trillion"],
+    [1e9, "billion"],
+    [1e6, "million"],
+    [1e3, "thousand"],
+  ];
+  for (const [scale, name] of units) {
+    if (abs >= scale) {
+      const value = n / scale;
+      const shown = value < 10 ? Number(value.toFixed(1)) : Math.round(value);
+      return `${groupInt.format(shown)} ${name}`;
+    }
+  }
+  return groupInt.format(Math.round(n));
+}
+
 /** One-in-X style probability string. */
 export function formatOneIn(p: number): string {
   if (p <= 0) return "never";

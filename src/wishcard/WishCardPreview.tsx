@@ -9,16 +9,15 @@ import type { LetterSearchResult } from "../engine/lettersSearch";
 import type { PatternSpec } from "../engine/patternSearch";
 import type { PatternResult } from "../data/piApi";
 import { buildCaption } from "./caption";
+import { pickCopy, previewLine } from "./copy";
 import { fileNameFor } from "./layout";
 import { renderWishCard, whenIdle, type RenderedCard } from "./render";
 import { downloadCard, prepareCardFile, shareCard } from "./share";
-import { DEFAULT_WISH_OPTIONS, type WishCardInput, type WishOptions } from "./types";
+import { DEFAULT_WISH_OPTIONS, type WishCardInput, type WishOptions, type WishSubject } from "./types";
 import {
   buildWishInputForDigits,
   buildWishInputForLetters,
   buildWishInputForPattern,
-  datasetWords,
-  pickCopy,
 } from "./index";
 import WishCardDialog from "./WishCardDialog";
 
@@ -58,6 +57,9 @@ export function WishCardPreview({
   input: WishCardInput | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const [shimmer, setShimmer] = useState(false);
+  const shown = useRef("");
+
   useEffect(() => {
     const el = host.current;
     if (!el) return;
@@ -72,7 +74,18 @@ export function WishCardPreview({
     el.replaceChildren(canvas);
   }, [rendered]);
 
-  if (!rendered) {
+  useEffect(() => {
+    if (!rendered || !input) return;
+    const key = `${input.shareUrl}|${input.query}|${input.tier}`;
+    if (shown.current === key) return;
+    shown.current = key;
+    if (input.tier !== "gold" && input.tier !== "silver") return;
+    setShimmer(true);
+    const timer = window.setTimeout(() => setShimmer(false), 900);
+    return () => window.clearTimeout(timer);
+  }, [rendered, input]);
+
+  if (!rendered || !input) {
     return (
       <div
         className="h-[240px] w-[240px] animate-pulse rounded-lg"
@@ -80,18 +93,18 @@ export function WishCardPreview({
       />
     );
   }
-  const copy = pickCopy(input!);
-  const detail = input!.found
-    ? `${copy.thing} ${input!.query}, first at position ${input!.firstPosition ?? "—"}.`
-    : `${copy.thing} ${input!.query}, not found in the first ${datasetWords(input!.datasetSize)} digits.`;
+  const copy = pickCopy(input);
   return (
-    <div
-      role="img"
-      aria-label={`Wish card: ${copy.headline} ${detail}`}
-      className="w-[240px] overflow-hidden rounded-lg"
-      style={{ border: "1px solid var(--border)" }}
-    >
-      <div ref={host} />
+    <div>
+      <div
+        role="img"
+        aria-label={`Wish card, ${copy.tierLabel} tier. Headline: ${copy.headline} Quote: ${copy.quote.text}${input.dedication ? ` Dedication: ${input.dedication}` : ""}`}
+        className={`w-[240px] overflow-hidden rounded-lg ${shimmer ? "wish-shimmer" : ""}`}
+        style={{ border: "1px solid var(--border)" }}
+      >
+        <div ref={host} />
+      </div>
+      <p className="mb-0 mt-2 text-xs" style={{ color: "var(--text-2)" }}>{previewLine(input, copy)}</p>
     </div>
   );
 }
@@ -114,6 +127,8 @@ export function WishCardSection(props: WishCardSectionProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
+  const custom = useRef<{ subject: WishSubject | null; dedication: string }>({ subject: null, dedication: "" });
+  const baseSubject = useRef<WishSubject>(mode === "digits" ? "number" : mode === "letters" ? "word" : mode === "shapes" ? "shape" : "pattern");
 
   // Build the exact data contract from the existing result object.
   useEffect(() => {
@@ -130,7 +145,14 @@ export function WishCardSection(props: WishCardSectionProps) {
       );
     };
     void build().then((value) => {
-      if (!cancelled) setInput(value);
+      if (!cancelled) {
+        baseSubject.current = value.subject;
+        setInput({
+          ...value,
+          subject: custom.current.subject ?? value.subject,
+          dedication: custom.current.dedication,
+        });
+      }
     });
     return () => { cancelled = true; };
   }, [mode, result, occurrence, fromDateHelper, options.hideQuery, spec, exact, fieldWidth, datasetSize]);
@@ -144,7 +166,7 @@ export function WishCardSection(props: WishCardSectionProps) {
     setFile(null);
     const timer = window.setTimeout(() => {
       cancelIdle = whenIdle(() => {
-        void renderWishCard(input, options)
+        void renderWishCard({ ...input, style: options.style }, options)
           .then(async (card) => {
             if (cancelled) return;
             setRendered(card);
@@ -179,10 +201,11 @@ export function WishCardSection(props: WishCardSectionProps) {
   }, []);
 
   const filename = input ? fileNameFor(input, options.format) : "pi-atlas-wish.png";
+  const tierLabel = input ? pickCopy(input).tierLabel : "Lucky";
 
   return (
     <section className="panel p-4" aria-label="Your wish card">
-      <h3 className="m-0 text-base">Your wish card</h3>
+      <h3 className="m-0 text-base">You earned a {tierLabel} card</h3>
       <div className="mt-3">
         <WishCardPreview rendered={rendered} input={input} />
       </div>
@@ -227,8 +250,14 @@ export function WishCardSection(props: WishCardSectionProps) {
             window.setTimeout(() => opener.current?.focus(), 0);
           }}
           input={input}
+          defaultSubject={baseSubject.current}
           options={options}
           onChange={setOptions}
+          onInputChange={(next) => {
+            if (next.subject !== input.subject) custom.current.subject = next.subject;
+            custom.current.dedication = next.dedication;
+            setInput(next);
+          }}
           rendered={rendered}
           file={file}
           fromDateHelper={fromDateHelper}
