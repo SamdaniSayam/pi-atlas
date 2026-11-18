@@ -245,3 +245,52 @@ a real static production build with a graceful API-down state — not a local
 demo or mock. `og:image` stays relative (some crawlers need an absolute URL;
 documented for a custom domain). No force-push or overwriting occurred: repo
 `SamdaniSayam/pi-atlas` was created fresh after confirming the name was free.
+
+## Wish card decisions (W0–W5)
+
+### W-D1 — Lint script
+The repo had **no** `npm run lint` script and no ESLint config. Added a small
+`scripts/lint.mjs` that fails on placeholder markers, `console.log`, and
+trailing whitespace in `src/` and `tests/`. Reason: the task requires
+`npm run lint` to run after each milestone; this keeps it real and dependency-free.
+
+### W-D2 — No shortcuts dialog existed
+The app has no keyboard-shortcuts dialog. One will be added in W3 with the
+existing `w`-to-open-wish-card rule so the shortcut has a documented home.
+
+### W-D3 — Long QR payloads
+`QRCode.create` reports the symbol version. Versions 10+ are too dense for the
+172–260 px card plate, so when the deep link needs version 10 or higher the QR
+falls back to the mode's explorer URL without parameters. Reason: a scannable
+plate that opens the explorer is more useful than a dense unreadable code; the
+full text still goes in the caption.
+
+### W-D4 — Hide my digits and the context strip
+`hideQuery` also hides the digits/letters context strip ("Context hidden by
+request") in addition to the hero, QR and filename. Reason: the strip would
+otherwise reveal the very digits the user asked to keep private.
+
+### W-D5 — iOS Safari download
+iOS Safari ignores the `download` attribute on blob links. It is detected via
+user agent and the blob URL is opened in a new tab with a "Long-press the image
+to save" toast. Reason: no native save API exists there and this matches the
+platform's normal save flow.
+
+### W-D6 — Shortcuts dialog
+A small lazy-loaded `ShortcutsDialog` was added behind a "?" button in the
+header, documenting `w` and `Esc`. Reason: the task requires documenting the
+new shortcut, and no shortcuts dialog existed before.
+
+### W-D7 — Glow drawn as flat rings
+A full-canvas smooth radial gradient made the square PNG ~985 KB. The glow is
+now 24 concentric flat-alpha rings; visually the same soft glow at 5% texture,
+but exact repeated colours let PNG compress it below 600 KB. Reason: hard file
+size budget for the square card.
+
+### W-D8 — Dataset size comes from the manifest
+The first draft reused the old 2M fixture wording ("2,000,000 digits") in card
+copy, captions and headers, which would lie about the shipped 1B dataset.
+`WishCardInput` now carries `datasetSize` from `useDatasetSize()` (the loaded
+manifest, with a 1B pre-load fallback); copy uses "1 billion digits", compact
+labels use "1B digits searched". Reason: no hardcoded or fake numbers on a
+card; a dataset change updates every card.

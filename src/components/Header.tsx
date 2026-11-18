@@ -34,9 +34,11 @@ function getPageTitle(pathname: string): string {
 
 export default function Header({
   onOpenSettings,
+  onOpenShortcuts,
   themeToggle,
 }: {
   onOpenSettings: () => void;
+  onOpenShortcuts: () => void;
   themeToggle: React.ReactNode;
 }) {
   const location = useLocation();
@@ -52,7 +54,7 @@ export default function Header({
       }}
     >
       <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-2 px-4">
-        <NavLink to="/" className="mr-2 flex items-center gap-2 no-underline" aria-label={`${APP_NAME} home`}>
+        <NavLink to="/" className="mr-2 flex items-center gap-2 no-underline" aria-label={`π${APP_NAME} home`}>
           <span
             aria-hidden="true"
             className="grid h-8 w-8 place-items-center rounded-lg font-semibold"
@@ -114,6 +116,14 @@ export default function Header({
 
         <div className="ml-auto flex items-center gap-1">
           {themeToggle}
+          <button
+            type="button"
+            className="btn btn-ghost icon-btn"
+            onClick={onOpenShortcuts}
+            aria-label="Keyboard shortcuts"
+          >
+            <span aria-hidden="true" className="text-base font-semibold">?</span>
+          </button>
           <button
             type="button"
             className="btn btn-ghost icon-btn"

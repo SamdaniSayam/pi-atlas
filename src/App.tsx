@@ -16,6 +16,14 @@ const OddsLab = lazy(() => import("./pages/OddsLab"));
 const About = lazy(() => import("./pages/About"));
 const TourStage = lazy(() => import("./tour/TourStage"));
 const History = lazy(() => import("./pages/History"));
+const ShortcutsDialog = lazy(() => import("./components/ShortcutsDialog"));
+
+/** Dev-only gallery route; dead-code-eliminated from production builds. */
+function devRoutes() {
+  if (!(import.meta.env.DEV || import.meta.env.VITE_E2E === "1")) return null;
+  const WishGallery = lazy(() => import("./wishcard/dev/WishGallery"));
+  return <Route path="/dev/wish" element={<WishGallery />} />;
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -28,6 +36,7 @@ function ScrollToTop() {
 export default function App() {
   const settings = useSettings();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
     applySettingsToDocument(settings);
@@ -62,6 +71,7 @@ export default function App() {
       <ScrollToTop />
       <Header
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
         themeToggle={<ThemeToggle />}
       />
       <main
@@ -81,6 +91,7 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/tour" element={<TourStage />} />
             <Route path="/history" element={<History />} />
+            {devRoutes()}
             <Route path="*" element={<Home />} />
           </Routes>
         </Suspense>
@@ -88,6 +99,11 @@ export default function App() {
       <BottomNavigation onOpenSettings={() => setSettingsOpen(true)} />
       <Toast />
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {shortcutsOpen && (
+        <Suspense fallback={null}>
+          <ShortcutsDialog open onClose={() => setShortcutsOpen(false)} />
+        </Suspense>
+      )}
     </HashRouter>
   );
 }

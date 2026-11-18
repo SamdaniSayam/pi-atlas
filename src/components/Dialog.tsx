@@ -8,6 +8,9 @@ interface DialogProps {
   title: string;
   children: React.ReactNode;
   wide?: boolean;
+  /** Full-screen sheet below md, centred dialog above. */
+  sheet?: boolean;
+  maxWidthPx?: number;
 }
 
 /** Modal dialog with focus management and Escape handling. */
@@ -23,7 +26,7 @@ function DialogShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function Dialog({ open, onClose, title, children, wide }: DialogProps) {
+export default function Dialog({ open, onClose, title, children, wide, sheet, maxWidthPx }: DialogProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,8 +36,28 @@ export default function Dialog({ open, onClose, title, children, wide }: DialogP
     el?.querySelector<HTMLElement>(
       "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
     )?.focus();
+    const focusables = () => Array.from(
+      el?.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+      ) ?? [],
+    );
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -58,8 +81,16 @@ export default function Dialog({ open, onClose, title, children, wide }: DialogP
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="panel relative z-10 w-full md:max-w-[440px] md:mx-auto flex flex-col max-h-[85vh] md:max-h-[80vh] overflow-hidden"
-        style={{ boxShadow: "var(--shadow-2)", maxWidth: wide ? 720 : undefined, paddingBottom: "var(--safe-bottom)" }}
+        className={
+          sheet
+            ? "panel relative z-10 flex h-full w-full flex-col overflow-hidden !rounded-none md:h-auto md:max-h-[90vh] md:!rounded-[16px]"
+            : "panel relative z-10 flex w-full max-h-[85vh] flex-col overflow-hidden md:mx-auto md:max-w-[440px] md:max-h-[80vh]"
+        }
+        style={{
+          boxShadow: "var(--shadow-2)",
+          maxWidth: maxWidthPx ?? (wide ? 720 : undefined),
+          paddingBottom: "var(--safe-bottom)",
+        }}
       >
         <div className="flex items-center justify-between border-b px-5 py-3 shrink-0" style={{ borderColor: "var(--border)" }}>
           <h2 className="m-0 text-lg">{title}</h2>

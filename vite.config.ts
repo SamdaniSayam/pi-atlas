@@ -7,6 +7,9 @@ export default defineConfig({
   // production build must use relative asset URLs. Override when hosting at a
   // domain root, e.g. VITE_BASE_PATH=/ in CI. Local dev is unaffected.
   base: process.env.VITE_BASE_PATH ?? "./",
+  // The dev gallery route is compiled away in production. VITE_E2E lets a
+  // dedicated E2E build enable it when needed.
+  define: { "import.meta.env.VITE_E2E": JSON.stringify(process.env.VITE_E2E ?? "") },
   build: {
     target: "es2022",
     chunkSizeWarningLimit: 700,

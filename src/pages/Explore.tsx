@@ -3,14 +3,14 @@
  * Left: controls · Centre: visualization · Right: results inspector.
  * Bottom: minimap. URL is the source of truth for the active search.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Link2, Download, Minus, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Link2, Minus, Plus } from "lucide-react";
 import { usePiStore, useDatasetSize } from "../data/piStore";
 import { useSearch, recordHistory } from "../state/useSearch";
 import { useHistory, type SearchMode } from "../state/useHistory";
 import { useSettings } from "../state/useSettings";
-import { fetchContextAt, useContextAt } from "../data/digitWindow";
+import { useContextAt } from "../data/digitWindow";
 import { formatInt, formatMagnitude, formatOneIn, difficultyFor } from "../engine/format";
 import DigitViewer, { type Highlight } from "../components/DigitViewer";
 import PixelField, { FieldLegend } from "../components/PixelField";
@@ -21,12 +21,28 @@ import OddsRibbon from "../components/OddsRibbon";
 import HistoryPanel from "../components/HistoryPanel";
 import EmptyState, { ErrorState, LoadingState } from "../components/EmptyState";
 import SearchProgress from "../components/SearchProgress";
-import { shareOrCopy, exportSearchPng, downloadBlob } from "../lib/share";
+import { shareOrCopy } from "../lib/share";
 import { useToast } from "../components/Toast";
 import { buildShareUrl, serializeExplore } from "../lib/url";
 import PatternPainter, { SHAPE_PRESETS, COLOUR_PRESETS } from "../components/PatternPainter";
 import { submitPattern, cancelJob, pollJob, type PatternResult, type PatternMatch } from "../data/piApi";
 import { expectedPatternMatches, type PatternSpec } from "../engine/patternSearch";
+
+/** Wish cards load only when a finished result is on screen. */
+const WishCardSection = lazy(() =>
+  import("../wishcard/WishCardPreview").then((m) => ({ default: m.WishCardSection })),
+);
+function WishCard({ ...props }: ComponentProps<typeof WishCardSection>) {
+  return (
+    <Suspense fallback={<div className="panel h-16 animate-pulse" aria-label="Wish card loading" />}>
+      <WishCardSection {...props} />
+    </Suspense>
+  );
+}
+
+function fromDateHelper(): boolean {
+  return new URLSearchParams(window.location.hash.split("?")[1] ?? "").has("d");
+}
 
 const MODES: SearchMode[] = ["digits", "dates", "letters", "colors", "shapes"];
 const MODE_TITLES: Record<SearchMode, string> = {
@@ -272,9 +288,9 @@ function DigitStage() {
 }
 
 function DigitsInspector() {
-  const size = useDatasetSize();
   const result = useSearch((s) => s.digitsResult);
   const selected = useSearch((s) => s.selectedOccurrence);
+  const searching = useSearch((s) => s.searching);
   const toast = useToast((s) => s.show);
 
   // Hooks must be unconditional — derive defensively before the empty state.
@@ -297,28 +313,6 @@ function DigitsInspector() {
     const url = buildShareUrl(`/explore/digits`, { mode: "digits", query: result.query, occurrence: selected });
     const how = await shareOrCopy(url, "π Atlas search");
     toast(how === "copied" ? "Link copied to clipboard" : how === "shared" ? "Shared" : "Could not share the link");
-  };
-
-  const exportPng = async () => {
-    if (!pos) return;
-    const context = await fetchContextAt(pos, result.length);
-    const blob = await exportSearchPng({
-      appName: "π Atlas",
-      mode: "Number Explorer",
-      query: result.query,
-      position: `#${formatInt(selected)} at position ${formatInt(pos)}`,
-      contextBefore: context.before,
-      contextMatch: context.match,
-      contextAfter: context.after,
-      datasetSize: size,
-      disclaimer: "Model estimates assume idealised uniform random digits. π's normality is unproven.",
-    });
-    if (blob) {
-      downloadBlob(blob, `pi-atlas-${result.query}.png`);
-      toast("PNG exported");
-    } else {
-      toast("Export failed on this browser");
-    }
   };
 
   return (
@@ -380,14 +374,18 @@ function DigitsInspector() {
         </section>
       )}
 
-      <section className="flex gap-2" aria-label="Share and export">
+      <section className="flex gap-2" aria-label="Share">
         <button type="button" className="btn flex-1" onClick={() => void share()}>
           <Link2 size={15} aria-hidden="true" /> Copy link
         </button>
-        <button type="button" className="btn flex-1" onClick={() => void exportPng()} disabled={!result.found}>
-          <Download size={15} aria-hidden="true" /> PNG
-        </button>
       </section>
+      <WishCard
+        mode="digits"
+        result={result}
+        searching={searching}
+        occurrence={selected}
+        fromDateHelper={fromDateHelper()}
+      />
     </>
   );
 }
@@ -473,7 +471,9 @@ function DatesInspector() {
 
   const openInDigits = (sequence: string) => {
     void useSearch.getState().runDigits(sequence).then((r) => {
-      navigate(`/explore/digits?q=${sequence}`);
+      // d=1 marks date-helper digit searches so the wish card can default to
+      // Hide my digits. Old shared links without d keep working unchanged.
+      navigate(`/explore/digits?q=${sequence}&d=1`);
       if (r) recordHistory(useHistory.getState(), "digits", sequence, r.found, r.found ? r.positions[0] : null);
     });
   };
@@ -692,6 +692,7 @@ function LettersStage() {
 
 function LettersInspector() {
   const result = useSearch((s) => s.lettersResult);
+  const searching = useSearch((s) => s.searching);
   if (!result) return null;
   return (
     <>
@@ -727,6 +728,13 @@ function LettersInspector() {
         (p = 0.03). Expected odds above use the per-letter probabilities of your actual
         word — not an equal-letter assumption.
       </section>
+      <WishCard
+        mode="letters"
+        result={result}
+        searching={searching}
+        occurrence={1}
+        fromDateHelper={fromDateHelper()}
+      />
     </>
   );
 }
@@ -781,6 +789,7 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
 
   const startSearch = useCallback(async () => {
     setSearching(true);
+    setPatternSearching(true);
     setProgress(null);
     let apiResult: PatternResult;
     try {
@@ -801,17 +810,20 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
         });
         if (settled.status === "cancelled") {
           setSearching(false);
+          setPatternSearching(false);
           setProgress(null);
           return;
         }
         if (settled.status === "timeout") {
           setSearching(false);
+          setPatternSearching(false);
           setProgress(null);
           toast("The pattern search hit its time limit and stopped early — results would be incomplete.");
           return;
         }
         if (settled.status === "failed" || !settled.result) {
           setSearching(false);
+          setPatternSearching(false);
           setProgress(null);
           toast(settled.error ?? "The pattern search failed.");
           return;
@@ -820,12 +832,14 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
       }
     } catch (err) {
       setSearching(false);
+      setPatternSearching(false);
       setProgress(null);
       toast(err instanceof Error ? err.message : "The pattern search failed.");
       return;
     }
     activePatternJobId.current = null;
     setSearching(false);
+    setPatternSearching(false);
     setProgress(null);
 
     const matches: PatternMatch[] = apiResult.matches;
@@ -898,6 +912,7 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
           progress={progress}
           onCancel={() => {
             setSearching(false);
+            setPatternSearching(false);
             setProgress(null);
             if (activePatternJobId.current !== null) {
               void cancelJob(activePatternJobId.current).catch(() => undefined);
@@ -935,6 +950,7 @@ const patternResultStore = {
   matches: [] as PatternMatch[],
   total: 0,
   capped: false,
+  searching: false,
   selected: -1,
   spec: null as PatternSpec | null,
   exact: true,
@@ -944,6 +960,11 @@ const patternResultStore = {
     this.listeners.forEach((l) => l());
   },
 };
+
+function setPatternSearching(value: boolean) {
+  patternResultStore.searching = value;
+  patternResultStore.bump();
+}
 
 function usePatternResult() {
   const [, force] = useState(0);
@@ -1070,6 +1091,19 @@ function PatternInspector({ mode }: { mode: SearchMode }) {
   const store = usePatternResult();
   const toast = useToast((s) => s.show);
   const size = useDatasetSize();
+  const patternResult = useMemo<PatternResult>(() => ({
+    total: store.total,
+    matches: store.matches,
+    capped: store.capped,
+    incomplete: false,
+    anchors: 0,
+    constrained_cells: store.spec?.cells.filter((v) => v !== -1).length ?? 0,
+    field_cols: store.fieldWidth,
+    rows: store.spec?.rows ?? 0,
+    cols: store.spec?.cols ?? 0,
+    colour_mode: store.spec?.colourMode ?? mode === "colors",
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [store.total, store.matches, store.capped, store.spec, store.fieldWidth, mode]);
 
   if (!store.spec) {
     return (
@@ -1098,30 +1132,6 @@ function PatternInspector({ mode }: { mode: SearchMode }) {
     toast(how === "copied" ? "Link copied" : how === "shared" ? "Shared" : "Could not share");
   };
 
-  const exportPng = async () => {
-    const match = store.matches[store.selected];
-    const spec = store.spec;
-    if (!match || !spec) return;
-    const context = await fetchContextAt(match.position, spec.cols, 20);
-    const blob = await exportSearchPng({
-      appName: "π Atlas",
-      mode: `${spec.rows}×${spec.cols} ${mode === "colors" ? "colour" : "shape"} pattern`,
-      query: `cells: ${spec.cells.map((v) => (v === -1 ? "·" : v)).join(" ")}`,
-      position: `position ${formatInt(match.position)} (row ${Math.floor((match.position - 1) / store.fieldWidth) + 1})`,
-      contextBefore: context.before,
-      contextMatch: context.match,
-      contextAfter: context.after,
-      datasetSize: size,
-      disclaimer: "Estimates assume idealised uniform random digits; π's normality is unproven.",
-    });
-    if (blob) {
-      downloadBlob(blob, `pi-atlas-${mode}-${match.position}.png`);
-      toast("PNG exported");
-    } else {
-      toast("Export failed");
-    }
-  };
-
   return (
     <>
       <ResultCard found={store.total > 0} title="Pattern search" difficulty={difficultyFor(expectedPatternMatches(store.spec, store.fieldWidth, size))}>
@@ -1133,12 +1143,9 @@ function PatternInspector({ mode }: { mode: SearchMode }) {
 
       <OddsRibbon probability={probability} note="idealised model" />
 
-      <section className="flex gap-2" aria-label="Share and export">
+      <section className="flex gap-2" aria-label="Share">
         <button type="button" className="btn flex-1" onClick={() => void share()}>
           <Link2 size={15} aria-hidden="true" /> Copy link
-        </button>
-        <button type="button" className="btn flex-1" onClick={() => void exportPng()} disabled={store.total === 0}>
-          <Download size={15} aria-hidden="true" /> PNG
         </button>
       </section>
 
@@ -1147,6 +1154,17 @@ function PatternInspector({ mode }: { mode: SearchMode }) {
         a single row of the field. The probability model treats digits as independent
         and uniform — an approximation, not a proven property of π.
       </section>
+      <WishCard
+        mode={mode === "colors" ? "pixels" : "shapes"}
+        result={patternResult}
+        spec={store.spec}
+        exact={store.exact}
+        fieldWidth={store.fieldWidth}
+        datasetSize={size}
+        searching={store.searching}
+        occurrence={store.selected + 1}
+        fromDateHelper={fromDateHelper()}
+      />
     </>
   );
 }

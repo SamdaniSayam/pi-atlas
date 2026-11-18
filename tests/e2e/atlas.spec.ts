@@ -124,14 +124,17 @@ test("share link restores the search state", async ({ page, context, browserName
   void browserName;
 });
 
-test("PNG export downloads a file", async ({ page }) => {
+test("wish card replaces the old PNG export", async ({ page }) => {
   await page.goto("/#/explore/digits?q=12");
   await expect(page.getByText("FOUND", { exact: true })).toBeVisible({ timeout: 60000 });
+  await expect(page.getByRole("region", { name: "Your wish card" })).toBeVisible({ timeout: 60000 });
+  // The old standalone PNG button is gone; the wish-card download replaces it.
+  await expect(page.getByRole("button", { name: /^PNG$/ })).toHaveCount(0);
   const [download] = await Promise.all([
     page.waitForEvent("download", { timeout: 60000 }),
-    page.getByRole("button", { name: /png/i }).click(),
+    page.getByRole("button", { name: /download/i }).first().click(),
   ]);
-  expect(download.suggestedFilename()).toMatch(/^pi-atlas-12.*\.png$/);
+  expect(download.suggestedFilename()).toBe("pi-atlas-wish-digits-12-square.png");
 });
 
 test("guided tour completes all four acts", async ({ page }) => {

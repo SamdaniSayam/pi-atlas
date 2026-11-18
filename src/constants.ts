@@ -9,6 +9,15 @@
 export const APP_NAME = "π Atlas";
 export const APP_TAGLINE = "An atlas of a billion digits";
 
+/** Wish-card branding. Set SITE_URL to the canonical site root when hosting elsewhere. */
+export const SITE_URL =
+  (typeof import.meta.env?.VITE_SITE_URL === "string" ? import.meta.env.VITE_SITE_URL.trim() : "") ||
+  (typeof location !== "undefined" ? location.origin + location.pathname : "https://samdanisayam.github.io/pi-atlas/");
+export const BRAND_TAGLINE = APP_TAGLINE;
+export const BRAND_HASHTAG = "#PiAtlas";
+/** Optional social handle drawn in the card footer. Empty by default. */
+export const BRAND_HANDLE = "";
+
 /** Fixture size for the local engine parity tests — not the served dataset. */
 export const DATASET_SIZE = 2_000_000;
 
