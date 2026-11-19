@@ -36,7 +36,7 @@ export const usePiStore = create<PiState>((set, get) => ({
       set({ manifest, progress: 1, status: "ready" });
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unknown error while contacting the dataset service.";
+        err instanceof Error ? err.message : "Unknown error while loading the local dataset.";
       set({ status: "error", error: message });
     }
   },

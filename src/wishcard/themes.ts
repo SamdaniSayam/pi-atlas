@@ -1,40 +1,51 @@
-/** Exact collectible tier palettes. The card ignores the app's live theme. */
+/**
+ * Royal Observatory palettes. Flat heritage tones, no gradients or glow.
+ * The card ignores the app's live theme and uses only these exact colours.
+ */
 import type { WishTier } from "./types";
 
 export interface TierTheme {
-  bg0: string;
-  bg1: string;
-  glow: string;
-  glow2: string;
-  foil: string[];
+  /** Card background. */
+  bg: string;
+  /** Architectural hairline and outer frame. */
+  line: string;
+  /** Primary ink. */
   text: string;
-  dim: string;
+  /** Royal accent used for the tier label. */
   accent: string;
-  pillText: string;
+  /** Muted metadata. */
+  dim: string;
 }
 
 export const THEMES: Record<WishTier, TierTheme> = {
   gold: {
-    bg0: "#0D0A05", bg1: "#1C1307", glow: "#FFC83D", glow2: "#FF8A3D",
-    foil: ["#FFF3B0", "#FFD24D", "#E8A317", "#FFF0A8", "#C98A0B", "#FFE27A"],
-    text: "#FFF6DC", dim: "#E9D5A1", accent: "#FFD24D", pillText: "#2A1B02",
+    bg: "#0D0B0A", line: "#3A3124", text: "#F6F1E7",
+    accent: "#D4AF6A", dim: "#A39784",
   },
   silver: {
-    bg0: "#080B12", bg1: "#131A29", glow: "#9FB4FF", glow2: "#7DD3FC",
-    foil: ["#FFFFFF", "#CBD5E1", "#8FA3C0", "#F1F5F9", "#94A3B8", "#E2E8F0"],
-    text: "#F4F7FC", dim: "#B6C2D6", accent: "#CBD5E1", pillText: "#0B1220",
+    bg: "#0C1322", line: "#26344D", text: "#F1F5F9",
+    accent: "#C7D2E2", dim: "#8E9DB5",
   },
   aurora: {
-    bg0: "#07110F", bg1: "#0B1F1B", glow: "#5EEAD4", glow2: "#A78BFA",
-    foil: ["#5EEAD4", "#60A5FA", "#A78BFA", "#5EEAD4"],
-    text: "#ECFDF8", dim: "#A9CFC6", accent: "#5EEAD4", pillText: "#04201C",
+    bg: "#0A1D18", line: "#1F4238", text: "#F3EFE6",
+    accent: "#C9B382", dim: "#8FA89E",
   },
   twilight: {
-    bg0: "#0B0A1A", bg1: "#1B1237", glow: "#8B5CF6", glow2: "#FF9E7A",
-    foil: ["#C4B5FD", "#A78BFA", "#FFB38A", "#C4B5FD"],
-    text: "#F3F0FF", dim: "#B9B2D9", accent: "#C4B5FD", pillText: "#140E2B",
+    bg: "#1B0E14", line: "#422533", text: "#F5EEF0",
+    accent: "#D4A5A5", dim: "#A68992",
   },
 };
+
+/** Archival Ivory Parchment, the one refined light museum-print option. */
+export const CLEAN_THEME: TierTheme = {
+  bg: "#F5F0E6", line: "#D8CFC0", text: "#161412",
+  accent: "#8C6B32", dim: "#5C554B",
+};
+
+/** Theme used by a card, independent of tier when the clean style is chosen. */
+export function themeFor(tier: WishTier, style: "collectible" | "clean"): TierTheme {
+  return style === "clean" ? CLEAN_THEME : THEMES[tier];
+}
 
 /** WCAG relative luminance of a #rrggbb colour. */
 export function luminance(hex: string): number {

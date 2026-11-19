@@ -62,7 +62,7 @@ export default function App() {
   }, [settings]);
 
   useEffect(() => {
-    document.title = `${APP_NAME} — explore one billion digits of π`;
+    document.title = `${APP_NAME} · explore one billion digits of π`;
   }, []);
 
   // Load dataset after first paint so the landing page renders instantly.

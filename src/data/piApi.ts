@@ -60,7 +60,7 @@ async function httpRequest<T>(
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new PiApiError(0, "network", `Could not reach the π search service: ${(err as Error).message}`);
+    throw new PiApiError(0, "network", `Could not load the π dataset: ${(err as Error).message}`);
   }
   type ErrorBody = { error?: { code?: string; message?: string } };
   let data: ErrorBody | null = null;

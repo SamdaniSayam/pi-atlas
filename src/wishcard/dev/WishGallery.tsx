@@ -207,11 +207,12 @@ function checkCard(
   const pixels = patch.length / 4;
   const avg = [r / pixels, g / pixels, b / pixels];
   const tier = card.input.tier;
-  const familyOk =
-    (tier === "gold" && avg[0] >= avg[1] && avg[1] >= avg[2]) ||
-    (tier === "silver" && avg[2] > avg[1] && avg[1] > avg[0]) ||
-    (tier === "aurora" && avg[1] > avg[2] && avg[2] > avg[0]) ||
-    (tier === "twilight" && avg[2] > avg[0] && avg[0] > avg[1]);
+  const familyOk = card.options.style === "clean"
+    ? avg[0] > avg[1] && avg[1] > avg[2] && avg[0] > 200
+    : (tier === "gold" && avg[0] >= avg[1] && avg[1] >= avg[2]) ||
+      (tier === "silver" && avg[2] > avg[1] && avg[1] > avg[0]) ||
+      (tier === "aurora" && avg[1] > avg[2] && avg[2] > avg[0]) ||
+      (tier === "twilight" && avg[0] > avg[2] && avg[2] > avg[1]);
   if (!familyOk) problems.push(`colour:${avg.map((v) => Math.round(v)).join(",")}`);
 
   return { ok: problems.length === 0, detail: problems.length ? problems.join(" ") : "OK", qr };

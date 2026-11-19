@@ -3,14 +3,14 @@ import { describeMagnitude } from "../../src/engine/format";
 import { buildCaption, stripQueryFromUrl, stripSrcCard } from "../../src/wishcard/caption";
 import {
   HEADLINES, HONESTY_BANNED, QUOTES, SUBLINES,
-  eyebrow, pickCopy, previewLine, sanitizeDedication,
+  editionTag, eyebrow, pickCopy, previewLine, sanitizeDedication,
 } from "../../src/wishcard/copy";
 import {
   FORMATS, LAYOUTS, cacheKeyFor, fileNameFor, fitText,
   layoutBoxes, qrPlateFor, slugFor,
 } from "../../src/wishcard/layout";
 import { explorerUrl, qrContentFor } from "../../src/wishcard/qr";
-import { THEMES, contrastRatio } from "../../src/wishcard/themes";
+import { CLEAN_THEME, THEMES, contrastRatio } from "../../src/wishcard/themes";
 import { TIER_LABELS, TIER_THRESHOLDS, oneIn, tierFor, tierPill } from "../../src/wishcard/tiers";
 import { DEFAULT_WISH_OPTIONS } from "../../src/wishcard/types";
 import { buildShareUrl } from "../../src/lib/url";
@@ -84,15 +84,15 @@ describe("wish-card rarity tiers", () => {
     for (const tier of TIERS) {
       expect(tierPill(tierInputs[tier])).toBe(eyebrow(tierInputs[tier]));
     }
-    expect(tierPill(tierInputs.gold)).toBe("LEGENDARY FIND");
-    expect(tierPill(tierInputs.silver)).toBe("RARE FIND");
+    expect(tierPill(tierInputs.gold)).toBe("LEGENDARY · 1 IN 1,001");
+    expect(tierPill(tierInputs.silver)).toBe("RARE · 1 IN 11");
     expect(tierPill(tierInputs.aurora)).toBe("LUCKY FIND");
     expect(tierPill(input({
       found: false, tier: "twilight", longestPrefix: { prefix: "123", position: 42 },
-    }))).toBe("SO CLOSE");
+    }))).toBe("UNCHARTED");
     expect(tierPill(input({
       found: false, tier: "twilight", query: "1234", longestPrefix: { prefix: "1", position: 42 },
-    }))).toBe("BEYOND THE HORIZON");
+    }))).toBe("UNCHARTED");
   });
 });
 
@@ -149,7 +149,7 @@ describe("wish-card copy deck", () => {
     for (const tier of TIERS) {
       for (let i = 0; i < 50; i += 1) {
         const copy = pickCopy(input({ tier, query: `word${i}`, subject: "word" }));
-        for (const text of [copy.headline, copy.subline, copy.odds, copy.quote.text, copy.collectorTag]) {
+        for (const text of [copy.headline, copy.subline, copy.odds, copy.quote.text, copy.factLine]) {
           expect(text.length).toBeLessThan(220);
           expect(text).not.toMatch(/[{}]/);
         }
@@ -169,7 +169,7 @@ describe("wish-card copy deck", () => {
     expect(attributed).toEqual([{
       tier: "twilight",
       text: "We must know. We will know.",
-      by: "— David Hilbert, 1930",
+      by: "David Hilbert, 1930",
     }]);
     expect(QUOTES.twilight.some((q) => q.text === "We must know. We will know.")).toBe(true);
   });
@@ -199,9 +199,11 @@ describe("wish-card copy deck", () => {
   });
 
   it("states the actual scanned dataset size, never a hardcoded 2M", () => {
-    expect(pickCopy(input()).subline).toContain("1 billion digits");
-    expect(pickCopy(input({ datasetSize: 2_000_000, datasetWords: "2 million digits" })).subline)
-      .toContain("2 million digits");
+    expect(pickCopy(input({ found: false })).factLine).toBe("Absent in the first 1,000,000,000 digits");
+    expect(pickCopy(input({ found: false, datasetSize: 2_000_000, datasetWords: "2 million digits" })).factLine)
+      .toBe("Absent in the first 2,000,000 digits");
+    expect(editionTag(2_000_000)).toBe("EDITION · 2M");
+    expect(editionTag(1_000_000_000)).toBe("EDITION · 1B");
     expect(buildCaption(input({ found: false, datasetSize: 2_000_000, datasetWords: "2 million digits" })))
       .toContain("2 million digits");
   });
@@ -248,13 +250,10 @@ describe("wish-card dedication sanitizer", () => {
 });
 
 describe("wish-card theme contrast", () => {
-  it("keeps every tier's main text readable on both backgrounds", () => {
-    for (const tier of TIERS) {
-      const theme = THEMES[tier];
-      expect(contrastRatio(theme.text, theme.bg0)).toBeGreaterThan(7);
-      expect(contrastRatio(theme.text, theme.bg1)).toBeGreaterThan(7);
-      expect(contrastRatio(theme.pillText, theme.accent)).toBeGreaterThan(4.5);
-      expect(contrastRatio(theme.dim, theme.bg0)).toBeGreaterThan(4.5);
+  it("keeps primary text at 7:1 and muted text at 4.5:1 on every palette", () => {
+    for (const theme of [...TIERS.map((tier) => THEMES[tier]), CLEAN_THEME]) {
+      expect(contrastRatio(theme.text, theme.bg)).toBeGreaterThan(7);
+      expect(contrastRatio(theme.dim, theme.bg)).toBeGreaterThan(4.5);
     }
     expect(contrastRatio("#FFFFFF", "#FFFFFF")).toBe(1);
   });
@@ -262,10 +261,10 @@ describe("wish-card theme contrast", () => {
 
 describe("wish-card caption", () => {
   it("builds a tier-appropriate found caption", () => {
-    expect(buildCaption(input({ expected: 0.000001 }))).toContain("Legendary find!");
-    expect(buildCaption(input({ expected: 0.000001 }))).toContain("Only a 1 in 1 million chance");
-    expect(buildCaption(input({ expected: 0.1 }))).toContain("Rare find!");
-    expect(buildCaption(input())).toContain("I found 12 in π at position 148!");
+    expect(buildCaption(input({ expected: 0.000001 }))).toContain("Legendary find.");
+    expect(buildCaption(input({ expected: 0.000001 }))).toContain("A 1 in 1 million chance");
+    expect(buildCaption(input({ expected: 0.1 }))).toContain("Rare find.");
+    expect(buildCaption(input())).toContain("Found 12 in π at position 148.");
     const caption = buildCaption(input());
     expect(caption).toContain("Try yours:");
     expect(caption).toContain("#PiAtlas #pi");
@@ -273,7 +272,7 @@ describe("wish-card caption", () => {
 
   it("builds the not-found caption from the actual dataset size", () => {
     expect(buildCaption(input({ found: false, datasetWords: "1 billion digits" })))
-      .toContain("12 wasn’t in the first 1 billion digits of π. Still special.");
+      .toContain("12 was not in the first 1 billion digits of π.");
   });
 
   it("hides the query in caption and URL when requested", () => {

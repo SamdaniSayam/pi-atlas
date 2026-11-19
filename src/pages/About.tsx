@@ -9,7 +9,7 @@ export default function About() {
   const manifest = usePiStore((s) => s.manifest);
   const digitCount = useDatasetSize();
   useEffect(() => {
-    document.title = `About — ${APP_NAME}`;
+    document.title = `About · ${APP_NAME}`;
   }, []);
 
   return (
@@ -18,9 +18,8 @@ export default function About() {
       <p className="mt-4 text-[15px]" style={{ color: "var(--text-2)" }}>
         {APP_NAME} is an interactive atlas of the first{" "}
         <strong className="mono">{formatInt(digitCount)}</strong> decimal digits
-        of π. The dataset is served by a local Rust search service; your browser
-        holds only the small digit windows it is currently drawing, and every
-        search runs server-side as an asynchronous job with live progress.
+        of π. Every search runs locally in your browser. The app loads only the
+        small digit windows it needs, and no search text is ever sent anywhere.
       </p>
 
       <section className="panel mt-6 p-5" id="methodology" aria-labelledby="methodology-h">
@@ -37,8 +36,8 @@ export default function About() {
             The searchable dataset is packed 4 bits per digit into chunked binary
             files. The manifest records per-chunk and whole-file SHA-256 checksums
             plus known checkpoints (<span className="mono">"12"</span> at position 148,{" "}
-            <span className="mono">"999999"</span> at 762); the service verifies
-            every checksum at startup and refuses to serve on any mismatch.
+            <span className="mono">"999999"</span> at 762); the app verifies
+            every checksum at startup and refuses to load on any mismatch.
           </li>
           <li className="mono break-all" style={{ color: "var(--text-2)" }}>
             Format: {manifest?.format ?? "…"} · SHA-256 (packed):{" "}
@@ -67,7 +66,7 @@ export default function About() {
           probability 4/100 per aligned pair (W–Z: 3/100, because pairs wrap mod 26),
           and a constrained pattern of k cells has probability{" "}
           <span className="mono">1 / base^k</span> per anchor. These are model
-          estimates — useful expectations, not proofs. π's normality remains an open
+          estimates. Useful expectations, not proofs. π's normality remains an open
           problem in mathematics.
         </p>
       </section>
@@ -76,7 +75,7 @@ export default function About() {
         <h2 id="privacy-h" className="m-0 text-xl">Privacy</h2>
         <ul className="mb-0 mt-3 list-disc pl-5 text-sm" style={{ color: "var(--text-2)" }}>
           <li>No accounts, no analytics, no cookies, no third-party requests.</li>
-          <li>Searches go to the local π search service on this machine; it holds no user data and keeps only recent job results in a bounded cache.</li>
+          <li>Searches run entirely on this device. No user data is collected, and recent results stay in a bounded in-memory cache.</li>
           <li>Search history lives in memory for the current session only.</li>
           <li>Settings are stored in your browser's localStorage under a versioned key.</li>
         </ul>

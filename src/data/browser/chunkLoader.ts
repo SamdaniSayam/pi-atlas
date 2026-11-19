@@ -24,9 +24,28 @@ export class ChunkIntegrityError extends Error {
   }
 }
 
+/** Where the bytes came from; only network bytes need persisting after verification. */
+export type ChunkSource = "network" | "cache";
+
+export interface ChunkFetchResult {
+  buffer: ArrayBuffer;
+  source: ChunkSource;
+}
+
+/** Raw bytes, optionally tagged with their origin. Plain ArrayBuffer = network. */
+export type ChunkFetchResponse = ArrayBuffer | ChunkFetchResult;
+
 /** Downloads raw packed bytes for one chunk. `signal` cancels the request. */
 export interface ChunkFetcher {
-  (chunk: WebChunkMeta, manifest: WebDatasetManifest, signal: AbortSignal): Promise<ArrayBuffer>;
+  (
+    chunk: WebChunkMeta,
+    manifest: WebDatasetManifest,
+    signal: AbortSignal,
+  ): Promise<ChunkFetchResponse>;
+}
+
+function normalizeFetchResult(value: ChunkFetchResponse): ChunkFetchResult {
+  return value instanceof ArrayBuffer ? { buffer: value, source: "network" } : value;
 }
 
 /** Default fetcher: static same-origin file under `manifest.baseUrl`. */
@@ -53,6 +72,19 @@ export interface ChunkLoaderOptions {
   /** Max verified chunks retained in memory (LRU). Default 32 (≈160 MB at 5 MB/chunk). */
   maxCachedChunks?: number;
   onProgress?: (progress: ChunkLoadProgress) => void;
+  /**
+   * Called only AFTER length + SHA-256 verification succeeds. Persistent-cache
+   * wrappers use this hook to write bytes, so corrupt responses are never saved.
+   */
+  onVerified?: (index: number, bytes: Uint8Array, source: ChunkSource) => void | Promise<void>;
+  /**
+   * Called when bytes that came from a persistent cache fail verification,
+   * before the ChunkIntegrityError is propagated. The cache key can be removed
+   * here so the next attempt falls through to the network.
+   */
+  onCorruptCached?: (index: number, error: ChunkIntegrityError) => void | Promise<void>;
+  /** Called when a chunk leaves the in-memory LRU (WASM mirror can free it). */
+  onEvict?: (index: number) => void;
 }
 
 export class ChunkLoader {
@@ -61,6 +93,9 @@ export class ChunkLoader {
   private readonly sha256: Sha256;
   private readonly maxCached: number;
   private readonly onProgress?: (progress: ChunkLoadProgress) => void;
+  private readonly onVerified?: ChunkLoaderOptions["onVerified"];
+  private readonly onCorruptCached?: ChunkLoaderOptions["onCorruptCached"];
+  private readonly onEvict?: ChunkLoaderOptions["onEvict"];
 
   /** Verified chunk bytes, Map insertion order = LRU order (oldest first). */
   private readonly cache = new Map<number, Uint8Array>();
@@ -75,6 +110,9 @@ export class ChunkLoader {
     this.sha256 = opts.sha256 ?? webCryptoSha256;
     this.maxCached = opts.maxCachedChunks ?? 32;
     this.onProgress = opts.onProgress;
+    this.onVerified = opts.onVerified;
+    this.onCorruptCached = opts.onCorruptCached;
+    this.onEvict = opts.onEvict;
   }
 
   get cachedCount(): number {
@@ -83,6 +121,11 @@ export class ChunkLoader {
 
   get inFlightCount(): number {
     return this.inflight.size;
+  }
+
+  /** Indices currently held in the in-memory LRU (oldest first). */
+  cachedIndices(): number[] {
+    return [...this.cache.keys()];
   }
 
   isAvailable(index: number): boolean {
@@ -123,22 +166,35 @@ export class ChunkLoader {
     }
 
     const task = (async (): Promise<Uint8Array> => {
+      let source: ChunkSource = "network";
       try {
         this.report(index, "downloading", 0, meta.bytes);
-        const buffer = await this.fetcher(meta, this.manifest, controller.signal);
-        this.report(index, "verifying", buffer.byteLength, meta.bytes);
-        if (buffer.byteLength !== meta.bytes) {
-          throw new ChunkIntegrityError(index, meta.sha256, `length ${buffer.byteLength} != ${meta.bytes}`);
+        const fetched = normalizeFetchResult(await this.fetcher(meta, this.manifest, controller.signal));
+        source = fetched.source;
+        this.report(index, "verifying", fetched.buffer.byteLength, meta.bytes);
+        if (fetched.buffer.byteLength !== meta.bytes) {
+          throw new ChunkIntegrityError(index, meta.sha256, `length ${fetched.buffer.byteLength} != ${meta.bytes}`);
         }
-        const bytes = new Uint8Array(buffer);
+        const bytes = new Uint8Array(fetched.buffer);
         const digest = await this.sha256(bytes);
         if (!hexEqual(digest, meta.sha256)) {
           throw new ChunkIntegrityError(index, meta.sha256, digest);
         }
+        // Verification is complete: only now may a persistent cache persist the
+        // bytes. Cache hits skip this hook because they were verified on write.
+        await this.onVerified?.(index, bytes, source);
         this.put(index, bytes);
         this.report(index, "cached", bytes.length, meta.bytes);
         return bytes;
       } catch (err) {
+        if (err instanceof ChunkIntegrityError && source === "cache") {
+          // Evict the bad key before propagating, so the retry is a network fetch.
+          try {
+            await this.onCorruptCached?.(index, err);
+          } catch {
+            // Cache deletion is best effort; the integrity error is authoritative.
+          }
+        }
         this.report(index, "failed", 0, meta.bytes);
         throw err;
       } finally {
@@ -165,6 +221,7 @@ export class ChunkLoader {
   /** Abort downloads and drop all cached chunks (dataset change / clear action). */
   clear(): void {
     this.cancelAll();
+    for (const index of this.cache.keys()) this.onEvict?.(index);
     this.cache.clear();
   }
 
@@ -186,6 +243,7 @@ export class ChunkLoader {
       const oldest = this.cache.keys().next().value;
       if (oldest === undefined) break;
       this.cache.delete(oldest);
+      this.onEvict?.(oldest);
     }
   }
 }

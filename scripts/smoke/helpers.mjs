@@ -43,7 +43,9 @@ export class SmokeHarness {
   }
 
   async launch() {
-    this.browser = await chromium.launch();
+    // Large dataset chunks can outgrow the container's /dev/shm; spill to disk
+    // so a 1B scan does not crash the renderer for an unrelated shm limit.
+    this.browser = await chromium.launch({ args: ["--disable-dev-shm-usage"] });
   }
 
   async close() {

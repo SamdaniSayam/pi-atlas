@@ -102,9 +102,10 @@ pub fn search_pattern(
     match_cap: usize,
     ctl: &crate::exact::ScanControl<'_>,
 ) -> PatternResult {
-    // The optimized Shift-And filter is benchmarked separately; the direct
-    // TS-parity scan is the reference and is currently the default.
-    search_pattern_direct(ds, spec, field_cols, match_cap, ctl)
+    // The Shift-And filter is parity-tested against the direct TS-parity scan
+    // (see `parity_optimized_vs_direct_randomised`) and is now the production
+    // default; `search_pattern_direct` remains available as the reference.
+    search_pattern_optimized(ds, spec, field_cols, match_cap, ctl)
 }
 
 /// Direct TS-parity scan.

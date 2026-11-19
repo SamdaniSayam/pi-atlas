@@ -84,7 +84,7 @@ export default function OddsLab() {
   }, [repaint]);
 
   useEffect(() => {
-    document.title = `Probability Laboratory — π Atlas`;
+    document.title = `Probability Laboratory · π Atlas`;
   }, []);
 
   const onFile = (file: File | undefined) => {
@@ -120,7 +120,7 @@ export default function OddsLab() {
       </h1>
       <p className="mt-3 max-w-2xl text-[15px]" style={{ color: "var(--text-2)" }}>
         Choose a colour count and a canvas size. The lab computes the chance that your
-        exact image appears somewhere in a billion digits — using logarithms, so even
+        exact image appears somewhere in a billion digits. It uses logarithms, so even
         absurd sizes stay computable.
       </p>
 
@@ -287,7 +287,7 @@ export default function OddsLab() {
           <strong style={{ color: "var(--text)" }}>
             not been proven to be statistically independent or normally distributed
           </strong>{" "}
-          — they have merely passed every statistical test ever thrown at them.
+          They have merely passed every statistical test ever thrown at them.
         </p>
       </section>
     </div>

@@ -95,8 +95,7 @@ function Hero() {
         </h1>
         <p className="mt-5 max-w-xl text-base" style={{ color: "var(--text-2)" }}>
           Explore one billion digits. Search for your numbers, your words, colours,
-          and shapes. Discover what appears — and what probability says about what
-          doesn't.
+          and shapes. See what appears, and what probability says about what does not.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link to="/explore/digits" className="btn btn-primary no-underline">
@@ -110,8 +109,8 @@ function Hero() {
         </div>
         <p className="mt-6 text-xs mono" style={{ color: "var(--text-2)" }} aria-live="polite">
           {status === "ready" && "✓ 1,000,000,000 decimal digits · verified · served live"}
-          {status === "loading" && "Contacting the dataset service…"}
-          {status === "error" && "Dataset service unreachable — some features are unavailable."}
+          {status === "loading" && "Loading local dataset…"}
+          {status === "error" && "Local dataset unavailable. Some features are unavailable."}
           {status === "idle" && "one billion decimal digits · verified · served live"}
         </p>
       </div>
@@ -149,7 +148,7 @@ function QuickExperiment() {
     <section className="panel mt-6 p-6" aria-label="Quick experiment">
       <h2 className="m-0 text-xl">Try it now</h2>
       <p className="mt-1 text-sm" style={{ color: "var(--text-2)" }}>
-        Any sequence of digits — a birthday, a phone number, a lucky pattern.
+        Any sequence of digits. A birthday, a phone number, a lucky pattern.
       </p>
       <div className="mt-4">
         <SearchInput
@@ -189,8 +188,8 @@ function QuickExperiment() {
       {status !== "ready" && (
         <p className="mb-0 mt-4 text-xs" style={{ color: "var(--text-2)" }}>
           {status === "error"
-            ? "The dataset service is unreachable — searches are unavailable."
-            : "Contacting the dataset service — searches unlock as soon as it answers."}
+            ? "Local dataset unavailable. Searches are paused."
+            : "Loading local dataset. Searches unlock as soon as it is ready."}
         </p>
       )}
     </section>
@@ -324,15 +323,15 @@ function BigQuestion() {
         <p className="eyebrow mb-3">THE BIG QUESTION</p>
         <h2 className="m-0" style={{ fontSize: "clamp(26px, 4vw, 32px)" }}>Does π contain everything?</h2>
         <p className="mt-4 text-[15px]" style={{ color: "var(--text-2)" }}>
-          Probably — and that's the fascinating part. If the digits of π behave like
+          Probably, and that is the interesting part. If the digits of π behave like
           a fair random stream (a property called <strong>normality</strong>), then any
           short pattern you can name must appear somewhere, and most do appear
           remarkably early. But this remains a hypothesis: no one has ever proved
-          that π is normal. A probability argument is not a proof — it is an
+          that π is normal. A probability argument is not a proof. It is an
           expectation, and this atlas lets you test that expectation directly.
         </p>
         <p className="mb-0 mt-3 text-[15px]" style={{ color: "var(--text-2)" }}>
-          Every result here is computed live from the actual dataset — nothing is
+          Every result here is computed locally from the actual dataset. Nothing is
           hardcoded, so what you find is what π really contains.
         </p>
       </div>
@@ -447,7 +446,7 @@ function TourSection() {
 
 export default function Home() {
   useEffect(() => {
-    document.title = `${APP_NAME} — is everything hiding in π?`;
+    document.title = `${APP_NAME} · is everything hiding in π?`;
   }, []);
   return (
     <div className="flex flex-col gap-0 pb-8">
@@ -458,7 +457,7 @@ export default function Home() {
       <ProbabilityTeaser />
       <TourSection />
       <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-6 text-sm" style={{ borderColor: "var(--border)", color: "var(--text-2)" }}>
-        <span>{APP_NAME} · one billion digits, searched server-side · no tracking</span>
+        <span>{APP_NAME} · one billion digits, searched locally on your device · no tracking</span>
         <nav aria-label="Footer" className="flex gap-4">
           <Link to="/about" className="no-underline" style={{ color: "var(--text-2)" }}>About</Link>
           <Link to="/about#methodology" className="no-underline" style={{ color: "var(--text-2)" }}>Methodology</Link>

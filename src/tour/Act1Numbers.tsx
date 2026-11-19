@@ -64,7 +64,7 @@ export default function Act1Numbers() {
 
       {failed && (
         <p className="mt-4 text-sm" style={{ color: "var(--error)" }} role="alert">
-          The search service is unreachable — try again in a moment.
+          Local search data is unavailable. Try again in a moment.
         </p>
       )}
 
@@ -78,7 +78,7 @@ export default function Act1Numbers() {
               </p>
               <p className="m-0 text-sm" style={{ color: "var(--text-2)" }}>
                 {formatInt(result12.total)} occurrences. A 2-digit sequence is
-                expected about once every {formatMagnitude(result12.expectedFirstDepth)} digits — so it appears
+                expected about once every {formatMagnitude(result12.expectedFirstDepth)} digits. It appears
                 almost immediately.
               </p>
             </>
@@ -95,8 +95,8 @@ export default function Act1Numbers() {
               </p>
               <p className="m-0 text-sm" style={{ color: "var(--text-2)" }}>
                 {resultLong.found
-                  ? `${formatInt(resultLong.total)} occurrence(s). Six digits are expected about ${formatInt(Math.round(resultLong.expectedCount))} times in a billion — a thousand trials.`
-                  : "Six specific digits are expected about once per million spots — a billion spots is a thousand trials, so it should show up somewhere."}
+                  ? `${formatInt(resultLong.total)} occurrence(s). Six digits are expected about ${formatInt(Math.round(resultLong.expectedCount))} times in a billion. That is a thousand trials.`
+                  : "Six specific digits are expected about once per million spots. A billion spots is a thousand trials, so it should show up somewhere."}
               </p>
             </>
           ) : (
@@ -108,9 +108,8 @@ export default function Act1Numbers() {
       <p className="mb-0 mt-5 text-sm" style={{ color: "var(--text-2)" }}>
         <strong style={{ color: "var(--text)" }}>Why longer is harder:</strong> each extra
         digit divides the chance by 10. One digit turns up every ~1.1 positions, two
-        every ~100, six every ~1,000,000, twenty every 10^20 — far beyond the reach of
-        any dataset we could ever store. That is the whole drama of this atlas in one
-        exponential.
+        every ~100, six every ~1,000,000, twenty every 10^20, far beyond the reach of
+        any dataset we could ever store. One exponential explains the cliff.
       </p>
     </div>
   );

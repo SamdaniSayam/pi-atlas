@@ -1,8 +1,32 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { absoluteSocialImage, normalizeSiteRoot } from "./src/lib/socialMetadata";
+
+/**
+ * Social crawlers do not resolve relative og:image URLs consistently. Rewrite
+ * the two image tags to absolute HTTPS URLs at build time, with a safe fallback
+ * when VITE_SITE_URL is unset in local/CI builds.
+ */
+function absoluteSocialImages(): Plugin {
+  const imageUrl = absoluteSocialImage(normalizeSiteRoot(process.env.VITE_SITE_URL));
+  const replaceContent = (html: string, attribute: string, name: string): string => {
+    const pattern = new RegExp(`(<meta\\s+${attribute}="${name}"\\s+content=")[^"]*(")`);
+    return html.replace(pattern, `$1${imageUrl}$2`);
+  };
+  return {
+    name: "absolute-social-images",
+    transformIndexHtml(html) {
+      return replaceContent(
+        replaceContent(html, "property", "og:image"),
+        "name",
+        "twitter:image",
+      );
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), absoluteSocialImages()],
   // GitHub Pages serves the site from https://<user>.github.io/<repo>/, so the
   // production build must use relative asset URLs. Override when hosting at a
   // domain root, e.g. VITE_BASE_PATH=/ in CI. Local dev is unaffected.

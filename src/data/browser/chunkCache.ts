@@ -6,12 +6,16 @@
  *    private browsing and storage eviction may refuse or discard writes; every
  *    method swallows storage errors and the in-memory LRU in ChunkLoader stays
  *    authoritative for the session.
- *  - Only SHA-256-VERIFIED bytes are written. ChunkLoader verifies before it
- *    calls `put`, so a corrupt/partial download can never poison the cache.
+ *  - Only SHA-256-VERIFIED bytes are written. ChunkLoader verifies length and
+ *    digest first, then calls the `onVerified` hook exposed by `cachedFetcher`;
+ *    a corrupt/partial download can never poison the cache. A cached entry that
+ *    fails verification is deleted before the error is propagated.
  *  - Cache entries are keyed by datasetId + chunk index, so a dataset upgrade
  *    cannot serve stale chunks. The HTTP `fetch(..., {cache:"force-cache"})`
  *    layer in chunkLoader.ts is the second (Cache API) tier.
  */
+
+import type { ChunkFetcher, ChunkIntegrityError, ChunkSource } from "./chunkLoader";
 
 const DB_NAME = "pi-atlas-chunks";
 const DB_VERSION = 1;
@@ -119,13 +123,27 @@ export async function writeCachedChunk(
   }
 }
 
-/** Remove one cached chunk entry (best effort). */
+/** Remove one cached chunk entry and adjust the byte counter (best effort). */
 export async function deleteCachedChunk(datasetId: string, index: number): Promise<void> {
   const db = await openDb();
   if (!db) return;
   try {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(keyOf(datasetId, index));
+    const key = keyOf(datasetId, index);
+    // Read size/counter in their own transactions: awaiting inside a readwrite
+    // transaction lets IndexedDB auto-close it before the delete.
+    const removed = await new Promise<number>((resolve) => {
+      const r = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
+      r.onsuccess = () => resolve(r.result instanceof ArrayBuffer ? r.result.byteLength : 0);
+      r.onerror = () => resolve(0);
+    });
+    const current = await new Promise<number>((resolve) => {
+      const r = db.transaction(META_STORE, "readonly").objectStore(META_STORE).get("cachedBytes");
+      r.onsuccess = () => resolve(typeof r.result === "number" ? r.result : 0);
+      r.onerror = () => resolve(0);
+    });
+    const tx = db.transaction([STORE, META_STORE], "readwrite");
+    tx.objectStore(STORE).delete(key);
+    tx.objectStore(META_STORE).put(Math.max(0, current - removed), "cachedBytes");
     await txDone(tx);
   } catch {
     // ignore
@@ -200,17 +218,62 @@ export async function chunkCacheStatus(): Promise<ChunkCacheStatus> {
   }
 }
 
+/** Swappable persistence layer; the default is the IndexedDB store above. */
+export interface ChunkCacheStorage {
+  read(datasetId: string, index: number): Promise<Uint8Array | null>;
+  write(datasetId: string, index: number, bytes: Uint8Array): Promise<void>;
+  delete(datasetId: string, index: number): Promise<void>;
+}
+
+const indexedDbStorage: ChunkCacheStorage = {
+  read: (datasetId, index) => readCachedChunk(datasetId, index),
+  write: async (datasetId, index, bytes) => {
+    await writeCachedChunk(datasetId, index, bytes);
+  },
+  delete: async (datasetId, index) => {
+    await deleteCachedChunk(datasetId, index);
+  },
+};
+
+export interface CachedFetcherHandle {
+  /** Reads cache→network and tags the result so ChunkLoader knows its origin. */
+  fetcher: ChunkFetcher;
+  /** Called by ChunkLoader only after length + SHA-256 verification succeeds. */
+  onVerified: (index: number, bytes: Uint8Array, source: ChunkSource) => Promise<void>;
+  /** Called by ChunkLoader when cached bytes fail verification. */
+  onCorruptCached: (index: number, error: ChunkIntegrityError) => Promise<void>;
+}
+
+function standaloneBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
 /**
- * A ChunkFetcher wrapper that checks IndexedDB before the network and writes
- * successful downloads back. Verification is still performed by ChunkLoader.
+ * Cache-first fetcher plus the verification hooks ChunkLoader calls. Bytes are
+ * written only after ChunkLoader verifies them, and a corrupt cached entry is
+ * deleted before the integrity error is propagated.
  */
-export function cachedFetcher(networkFetch: (chunk: { file: string }, signal: AbortSignal) => Promise<ArrayBuffer>, datasetId: string) {
-  return async (chunk: { file: string; index: number }, _manifest: unknown, signal: AbortSignal): Promise<ArrayBuffer> => {
-    const cached = await readCachedChunk(datasetId, chunk.index);
-    if (cached) return cached.buffer as ArrayBuffer;
+export function cachedFetcher(
+  networkFetch: (chunk: { file: string; index: number }, signal: AbortSignal) => Promise<ArrayBuffer>,
+  datasetId: string,
+  storage: ChunkCacheStorage = indexedDbStorage,
+): CachedFetcherHandle {
+  const fetcher: ChunkFetcher = async (chunk, _manifest, signal) => {
+    const cached = await storage.read(datasetId, chunk.index);
+    if (cached) return { buffer: standaloneBuffer(cached), source: "cache" };
     const buffer = await networkFetch(chunk, signal);
-    // Persist asynchronously — do not block the search on IDB writes.
-    void writeCachedChunk(datasetId, chunk.index, new Uint8Array(buffer));
-    return buffer;
+    return { buffer, source: "network" };
   };
+
+  const onVerified = async (index: number, bytes: Uint8Array, source: ChunkSource): Promise<void> => {
+    // A cache hit was already verified when it was written; only persist fresh
+    // network bytes, and only after ChunkLoader's length + SHA-256 checks pass.
+    if (source === "network") await storage.write(datasetId, index, bytes);
+  };
+
+  const onCorruptCached = async (index: number, _error: ChunkIntegrityError): Promise<void> => {
+    await storage.delete(datasetId, index);
+  };
+
+  return { fetcher, onVerified, onCorruptCached };
 }

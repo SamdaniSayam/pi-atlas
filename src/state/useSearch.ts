@@ -179,7 +179,7 @@ export const useSearch = create<SearchState>((set) => {
         return null;
       }
       if (settled.status === "timeout") {
-        set({ searching: false, progress: null, searchError: "The search hit its time limit and stopped early — results would be incomplete. Narrow the query or try again." });
+        set({ searching: false, progress: null, searchError: "The search hit its time limit and stopped early. Results would be incomplete. Narrow the query or try again." });
         return null;
       }
       if (settled.status === "failed" || !settled.result) {

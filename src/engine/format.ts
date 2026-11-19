@@ -99,7 +99,7 @@ export function difficultyFor(expectedMatches: number): DifficultyInfo {
       level: "unlikely",
       label: "Unlikely",
       description:
-        "A match would be lucky — fewer than one is expected in the dataset.",
+        "A match would be lucky. Fewer than one is expected in the dataset.",
     };
   }
   return {

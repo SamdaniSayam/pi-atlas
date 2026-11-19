@@ -1,10 +1,32 @@
 # π Atlas — production deployment guide
 
-This document is the runbook for taking π Atlas from local development to a
-public site. The frontend is fully automated; the backend needs **your** cloud
-account and DNS, which cannot be created from this environment.
+This document is retained as the historical runbook for the retired server-based
+deployment. The **current** product is browser-only: the verified 1B dataset is
+served as same-origin static chunks and all searches run in the WASM worker. For
+the current truth, use `docs/GITHUB_PAGES_DEPLOYMENT.md`,
+`docs/BROWSER_SEARCH_ARCHITECTURE.md`, `README.md` and `REPORT.md`.
 
-## Architecture
+## Current static deployment
+
+The Pages workflow runs lint, typecheck, 155 unit tests, the production build,
+both Playwright suites and `smoke:local`, then deploys only when
+`PI_ATLAS_PAGES_DEPLOY=true`. Build-time inputs are `VITE_PI_DATASET_URL`
+(`data/pi-2m/` by default, `data/pi-1b/` for the full site), `VITE_BASE_PATH`
+(`./`) and `VITE_SITE_URL`. The last value drives Wish Card links and is
+normalized into absolute HTTPS `og:image`/`twitter:image` URLs by a Vite HTML
+transform; an unset or malformed value falls back to
+`https://samdanisayam.github.io/pi-atlas/`. No backend, CORS setup or secrets
+are required.
+
+A dedicated 1B preview (`VITE_PI_DATASET_URL=data/pi-1b/`,
+`SMOKE_EXPECT_DIGITS=1000000000`) passed smoke with first result 11,940 ms,
+1.48 MB counted transfer, 227.9 MB JS heap and a 58,869 ms shapes preset. The
+default `dist/` was rebuilt for 2M afterwards.
+
+Everything below this section describes the earlier Rust HTTP service and is
+kept for historical reference only.
+
+## Architecture (historical)
 
 ```
 Browser (GitHub Pages, https://<user>.github.io/pi-atlas/)
@@ -26,11 +48,13 @@ pi-server (Rust, loopback only)  ──reads──▶  /srv/pi-atlas/data-1b/  (
 
 ## What is already automated
 
-`main` pushes (and manual dispatch) run `.github/workflows/deploy.yml`:
-`npm ci` → typecheck → 80 unit tests → pack the 2M fixture → Rust release
-build → frontend build (with `VITE_PI_ATLAS_API` from the repo Variable
-`PI_ATLAS_API_URL`) → Playwright E2E against the real service on ports
-4175/7788 → assert no localhost in `dist/` → deploy to Pages.
+Historically, `main` pushes (and manual dispatch) ran
+`.github/workflows/deploy.yml` with `npm ci` → typecheck → 80 unit tests →
+pack the 2M fixture → Rust release build → frontend build (with
+`VITE_PI_ATLAS_API` from the repo Variable `PI_ATLAS_API_URL`) → Playwright E2E
+against the real service on ports 4175/7788 → assert no localhost in `dist/` →
+deploy to Pages. The current workflow omits the Rust service and API entirely
+and runs the browser-only gates listed above.
 
 ## Manual steps (require your account / credentials)
 
@@ -180,14 +204,16 @@ sudo systemctl daemon-reload && sudo systemctl restart pi-atlas
 
 ## Limits and honest notes
 
-- **og:image**: GitHub Pages has no server-side injection, so the committed
-  `og:image` is relative (`og.png`). Most browsers resolve it, but some social
-  crawlers require an absolute URL. If previews matter, set a custom domain and
-  change `index.html` to `content="https://<your-domain>/og.png"`.
-- **Backend is not deployed here**: no cloud account/CLI/credentials exist in
-  this environment, so no production API URL can be claimed until you complete
-  steps 1–5. Until `PI_ATLAS_API_URL` is set, Pages serves the UI but searches
-  fail gracefully (API-down state) — that is expected, not a mock.
-- **1B dataset in Git**: deliberately excluded (~477 MB). CI never needs it.
+- **og:image (resolved):** the historical relative URL is gone. A Vite HTML
+  transform now rewrites `og:image` and `twitter:image` to absolute HTTPS URLs
+  at build time using `VITE_SITE_URL`, with the canonical GitHub Pages root as
+  fallback. Set that repository variable to your custom domain if you move off
+  `<user>.github.io/<repo>/`; `twitter:card=summary_large_image` is included.
+- **Backend is not deployed here (historical)**: no cloud account/CLI/credentials
+  existed for the retired API, so no production API URL was ever claimed. The
+  current static build needs no backend and searches fully in the browser.
+- **1B dataset in Git**: deliberately excluded from the historical server setup
+  (~477 MB, loaded from `/srv/pi-atlas/data-1b/` on the VPS). The current static
+  build serves it from `public/data/pi-1b/` as same-origin chunks.
 - No external monitoring/alerting is configured; add UptimeRobot or similar
   against `/api/v1/health` if you need uptime notifications.

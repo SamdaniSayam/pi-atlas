@@ -18,8 +18,8 @@ export default function HistoryPanel() {
           <History size={15} aria-hidden="true" /> Session history
         </h3>
         <p className="mb-0 mt-2 text-sm" style={{ color: "var(--text-2)" }}>
-          Your searches this session will appear here. History lives in memory only —
-          it is never sent anywhere.
+          Your searches this session will appear here. History lives in memory only.
+          It is never sent anywhere.
         </p>
       </section>
     );

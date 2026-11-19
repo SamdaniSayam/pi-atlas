@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>π Atlas — Product Requirements Document</title>
+<style>
+  @page { size: A4; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+    font-size: 9.8pt;
+    line-height: 1.48;
+    color: #1d2739;
+    background: #fff;
+  }
+  .cover {
+    height: 258mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    page-break-after: always;
+    background: linear-gradient(155deg, #f6f7ff 0%, #ffffff 55%, #fdf7ec 100%);
+    padding: 18mm 6mm 12mm;
+    position: relative;
+  }
+  .cover .mark {
+    font-size: 92pt;
+    line-height: 1;
+    color: #4f46e5;
+    font-weight: 700;
+    margin: 0 0 6mm;
+  }
+  .cover h1 { font-size: 30pt; margin: 0 0 3mm; color: #111827; letter-spacing: -0.02em; }
+  .cover h2 { font-size: 14pt; margin: 0 0 10mm; color: #4b5563; font-weight: 500; }
+  .cover .rule { height: 4px; width: 42mm; background: linear-gradient(90deg,#4f46e5,#d4a017); margin: 0 0 10mm; }
+  .cover .lede { font-size: 11pt; color: #374151; max-width: 150mm; margin: 0 0 12mm; }
+  .cover table { width: 130mm; }
+  .cover td { border: 0; border-bottom: 1px solid #d9dee7; padding: 3pt 0; font-size: 9.5pt; }
+  .cover td:first-child { color: #6b7280; width: 42mm; }
+  .badge { display: inline-block; background: #e7f7ee; color: #12653a; padding: 2pt 8pt; border-radius: 10pt; font-size: 8.5pt; font-weight: 700; }
+  .cover .foot { position: absolute; bottom: 10mm; left: 6mm; font-size: 8pt; color: #8a94a6; }
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+  h2 {
+    font-size: 15pt; color: #312e81; margin: 8mm 0 3mm;
+    padding-bottom: 2mm; border-bottom: 2px solid #e0e7ff;
+  }
+  h3 { font-size: 11pt; color: #3730a3; margin: 5mm 0 2mm; }
+  h4 { font-size: 9.8pt; color: #111827; margin: 3mm 0 1.5mm; }
+  p { margin: 0 0 2.4mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin-bottom: 1.2mm; }
+  a { color: #4338ca; text-decoration: none; }
+  code, .mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace; font-size: 8.4pt; }
+  code { background: #f2f4f9; padding: 0.5pt 2pt; border-radius: 2pt; }
+  pre {
+    background: #f6f8fc; border: 1px solid #dbe1ea; border-left: 3px solid #6366f1;
+    padding: 2.5mm 3mm; font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 7.8pt; line-height: 1.4; white-space: pre-wrap; margin: 2mm 0 4mm;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.4pt; }
+  th, td { border: 1px solid #d8dee9; padding: 4pt 5pt; text-align: left; vertical-align: top; }
+  th { background: #eef1fb; color: #312e81; font-weight: 700; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  .toc { page-break-after: always; }
+  .toc ol { list-style: none; padding: 0; }
+  .toc li { border-bottom: 1px dotted #cbd2df; padding: 2.2mm 0; font-weight: 600; color: #312e81; }
+  .toc li span { color: #6b7280; font-weight: 400; font-size: 8.5pt; display: block; }
+  .page-break { break-before: page; page-break-before: always; }
+  .callout {
+    background: #f5f7ff; border-left: 4px solid #6366f1; padding: 2.5mm 4mm;
+    margin: 3mm 0; border-radius: 0 4pt 4pt 0;
+  }
+  .note { background: #fffaf0; border-left-color: #d4a017; }
+  .danger { background: #fff5f5; border-left-color: #dc2626; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5mm; margin: 3mm 0 5mm; }
+  .kpi { border: 1px solid #d8dee9; border-radius: 5pt; padding: 3mm; text-align: center; background: #fcfdff; }
+  .kpi b { display: block; font-size: 15pt; color: #4338ca; }
+  .kpi small { color: #6b7280; font-size: 7.6pt; }
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2mm; margin: 3mm 0; }
+  .step { border: 1px solid #d8dee9; border-radius: 5pt; padding: 2.5mm; background: #fbfcfe; font-size: 8.5pt; }
+  .step b { display: block; color: #4338ca; margin-bottom: 1mm; }
+  .tier-gold { color: #a16207; font-weight: 700; }
+  .tier-silver { color: #475569; font-weight: 700; }
+  .tier-aurora { color: #6d28d9; font-weight: 700; }
+  .tier-twilight { color: #1e3a8a; font-weight: 700; }
+  .small { font-size: 8.2pt; color: #6b7280; }
+  .footer-note { margin-top: 8mm; padding-top: 3mm; border-top: 1px solid #d8dee9; color: #6b7280; font-size: 8pt; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="mark">π</div>
+  <h1>π Atlas</h1>
+  <h2>Product Requirements Document &amp; Technical Specification</h2>
+  <div class="rule"></div>
+  <p class="lede">
+    An on-device, zero-backend interactive atlas of π digits — up to the
+    <strong>first one billion decimal places</strong> in production — with five
+    explorers, an honest probability laboratory, a guided tour, and collectible
+    rarity-tiered Wish Cards that can be generated, shared and verified entirely
+    in the browser.
+  </p>
+  <table>
+    <tr><td>Document</td><td>PRD.pdf — comprehensive product &amp; engineering specification</td></tr>
+    <tr><td>Version</td><td>1.0 (Royal Observatory Plate Wish Cards)</td></tr>
+    <tr><td>Date</td><td>19 November 2026</td></tr>
+    <tr><td>Status</td><td><span class="badge">IMPLEMENTED · ALL GATES GREEN</span></td></tr>
+    <tr><td>Repository</td><td>github.com/SamdaniSayam/pi-atlas</td></tr>
+    <tr><td>Source of truth</td><td>This repository: <code>src/</code>, <code>tests/</code>, <code>DECISIONS.md</code>, <code>REPORT.md</code></td></tr>
+    <tr><td>Regenerate</td><td><code>npm run make:prd</code> (renders <code>PRD.html</code> with local Chromium)</td></tr>
+  </table>
+  <div class="foot">π Atlas · product requirements, architecture, features, build and verification · page 1</div>
+</div>
+
+<!-- ============ TOC ============ -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li>Product overview<span>Vision, audience, principles, measurable outcomes</span></li>
+    <li>Goals, non-goals and use cases<span>What the product does and deliberately does not do</span></li>
+    <li>Functional requirements<span>Explorers, Probability Lab, tour, Wish Cards, sharing, accessibility</span></li>
+    <li>System architecture<span>Static site, dataset pipeline, WASM engine, workers, data flow, state</span></li>
+    <li>Technical specification<span>Stack, layout, data formats, algorithms, budgets, configuration</span></li>
+    <li>Build and development workflow<span>Commands, dataset packing, memory discipline</span></li>
+    <li>Testing and quality gates<span>Unit, E2E, wish gallery, smoke, final numbers</span></li>
+    <li>Deployment and operations<span>GitHub Pages, environment variables, privacy posture</span></li>
+    <li>Design decisions and trade-offs<span>Recorded decision IDs and their rationale</span></li>
+    <li>Limitations and future work<span>Honest boundaries and possible extensions</span></li>
+    <li>Appendices<span>Verification data, glossary, terminology</span></li>
+  </ol>
+  <div class="callout">
+    <strong>How to read this document.</strong> Sections 1–3 describe the product
+    from a user's perspective. Sections 4–6 explain how it is built and why.
+    Sections 7–8 define quality and operations. Sections 9–11 record decisions,
+    boundaries and reference data.
+  </div>
+</div>
+
+<!-- ============ 1 ============ -->
+<h2>1. Product overview</h2>
+
+<h3>1.1 Vision</h3>
+<p>
+  Make the enormous, beautiful stream of π digits <em>explorable</em> rather than
+  merely impressive. A person should be able to ask a personal question — is my
+  birthday in π? is my name? how unlikely is that? — get an answer computed from
+  real data, understand the statistics honestly, and keep a beautiful, private
+  memento of the result.
+</p>
+
+<h3>1.2 What the product is</h3>
+<p>
+  π Atlas is a <strong>static web application</strong> that ships a verified
+  dataset of the first 1,000,000,000 decimal digits of π (digits after the point,
+  no leading <code>3</code>) as same-origin binary chunks. A WebAssembly engine
+  running inside a Web Worker scans those chunks locally. There is no server
+  process, no account, no upload, no analytics and no paid service; the only
+  network traffic is the app shell and the data chunks it needs.
+</p>
+
+<h3>1.3 Audience</h3>
+<ul>
+  <li><strong>Curious learners and students</strong> who want to see probability and large numbers made concrete.</li>
+  <li><strong>Maths and π enthusiasts</strong> who care about verified data, positions and honest odds.</li>
+  <li><strong>Social sharers</strong> who want a collectible, personalised card without giving away their query.</li>
+  <li><strong>Accessibility-focused users</strong> including keyboard-only and small-screen users.</li>
+</ul>
+
+<h3>1.4 Product principles</h3>
+<table>
+  <tr><th>Principle</th><th>How it is applied</th></tr>
+  <tr><td>On-device &amp; private</td><td>Search, odds, QR and PNG rendering all run locally; Hide my digits removes the query from card, QR, caption and filename.</td></tr>
+  <tr><td>Real data only</td><td>Every count and position comes from a verified scan; no placeholder or fabricated statistics.</td></tr>
+  <tr><td>Honest uncertainty</td><td>Odds are labelled as an idealised random-digit model; banned overclaiming words are guarded in card copy; fine print on every card.</td></tr>
+  <tr><td>Calm editorial voice</td><td>User-facing copy uses short, human sentences. Em dashes, doubled hyphens, meme phrases and self-attributed quotes are avoided. The only sourced quote is David Hilbert (1930).</td></tr>
+  <tr><td>Durable links</td><td>Every search is expressible in the URL; old links keep working, and the banner marker lives only in scanned QR payloads.</td></tr>
+  <tr><td>Accessible &amp; mobile-first</td><td>Keyboard operations, focus management, ARIA, reduced motion, 4.5:1 contrast, responsive from 280px to 1920px.</td></tr>
+  <tr><td>Verifiable build</td><td>Manifest checksums, parity engines, unit/E2E/smoke gates and a production-hygiene check.</td></tr>
+</table>
+
+<h3>1.5 Measurable outcomes</h3>
+<div class="kpis">
+  <div class="kpi"><b>1B</b><small>verified decimal digits</small></div>
+  <div class="kpi"><b>5</b><small>search explorers</small></div>
+  <div class="kpi"><b>4</b><small>Wish Card rarity tiers</small></div>
+  <div class="kpi"><b>0</b><small>backend services</small></div>
+</div>
+<p class="small">
+  Quality targets: 149 unit tests, 48 main E2E tests, 19 wish-card E2E tests and
+  21 smoke checks (18 required + 3 soft) green; ≤ +0.5 KB gzip main-bundle
+  growth; ≤ 45 KB gzip Wish Card chunk; PNGs under 1.5 / 2.2 / 1.0 MB.
+</p>
+
+<!-- ============ 2 ============ -->
+<h2 class="page-break">2. Goals, non-goals and use cases</h2>
+
+<h3>2.1 Goals</h3>
+<ol>
+  <li><strong>G1 — Search:</strong> let users search five kinds of patterns in π with live progress and cancellation.</li>
+  <li><strong>G2 — Understand:</strong> translate search difficulty into plain-English probability without overclaiming.</li>
+  <li><strong>G3 — Keep &amp; share:</strong> produce a local, beautiful, scannable collectible card for every finished search.</li>
+  <li><strong>G4 — Include:</strong> work for keyboard, screen-reader and small-screen users.</li>
+  <li><strong>G5 — Verify:</strong> make the dataset and the build auditable, with deterministic tests and a pre-deploy smoke walk.</li>
+  <li><strong>G6 — Deploy simply:</strong> publish as static files with no server-side requirements.</li>
+</ol>
+
+<h3>2.2 Non-goals</h3>
+<ul>
+  <li>Proving or implying the normality of π; odds are explicitly an idealised model.</li>
+  <li>Accounts, cloud storage, telemetry, advertising or server-side computation.</li>
+  <li>Native mobile apps; the responsive web app is the product.</li>
+  <li>Accepting arbitrary user-supplied datasets at runtime, or allowing network fetches outside the app's own origin.</li>
+  <li>Load testing or performance benchmarking of third-party deployments.</li>
+</ul>
+
+<h3>2.3 Primary use cases</h3>
+<table>
+  <tr><th>Actor</th><th>Goal</th><th>Flow</th></tr>
+  <tr><td>Birthday seeker</td><td>Find a date in π without revealing it</td><td>Dates explorer → result → Open in Number Explorer → Hide my digits on by default → download/Share.</td></tr>
+  <tr><td>Number hunter</td><td>Find a personal number and learn its rarity</td><td>Digits explorer → occurrence list/minimap → Probability Lab → Wish Card with tier and one-in-N odds.</td></tr>
+  <tr><td>Word or pattern explorer</td><td>Find a word, colour or drawn shape</td><td>Letters / Colours / Shapes → worker scan with progress → result → card.</td></tr>
+  <tr><td>Card recipient</td><td>See the search a friend found</td><td>Scan QR → shared-result banner with result → Search your own clears the marker and focuses the input.</td></tr>
+  <tr><td>First-time visitor</td><td>Understand the app quickly</td><td>Guided tour with four real searches, or choose an explorer directly.</td></tr>
+</table>
+
+<!-- ============ 3 ============ -->
+<h2 class="page-break">3. Functional requirements</h2>
+
+<h3>3.1 Digits explorer</h3>
+<ul>
+  <li>Accepts a digit string (1–20 digits) and reports <em>FOUND</em> or <em>NOT FOUND</em>, first position (1-based), occurrence count and surrounding context.</li>
+  <li>Results are row-virtualised; a minimap samples positions; occurrence navigation exposes individual matches and a 1-based position button per row.</li>
+  <li>Checkpoints used by tests: <code>12</code> at position 148 and <code>999999</code> at position 762 in the 2M fixture.</li>
+  <li>The current search is encoded in the URL (<code>#/explore/digits?q=…</code>) and restored on deep link.</li>
+  <li>A not-found result shows the closest prefix and never claims a search is impossible.</li>
+</ul>
+
+<h3>3.2 Dates explorer</h3>
+<ul>
+  <li>Searches six date formats; results are shown in a format-comparison grid.</li>
+  <li>"Open in Number Explorer" opens a digit deep link marked <code>d=1</code>; privacy mode (<strong>Hide my digits</strong>) is enabled by default for these searches, with a visible note.</li>
+  <li>The smoke test uses <code>2006-09-07</code> and checks that no one of the six date strings leaks into the card QR or caption.</li>
+</ul>
+
+<h3>3.3 Letters explorer</h3>
+<ul>
+  <li>Searches words of 1–12 letters using the app's letter encodings across two frames; results report matches in both frames.</li>
+  <li>Word length and encoding limits are chosen so the model stays meaningful for the dataset size.</li>
+</ul>
+
+<h3>3.4 Colours and Shapes explorers</h3>
+<ul>
+  <li>Colours: paint a colour pattern and search the digit stream for the matching sequence.</li>
+  <li>Shapes: paint a binary shape/pattern on a grid (keyboard painting supported), use presets such as <em>Plus</em>, then scan with live progress and cancellation.</li>
+  <li>Pattern scans run off the UI thread; a "Matches in dataset" result is rendered when the worker finishes.</li>
+</ul>
+
+<h3>3.5 Probability Laboratory</h3>
+<p>
+  An interactive view of the expected number of occurrences for a search of a
+  given length, showing the steep drop from "everywhere" to "practically
+  impossible". The model assumes independent random decimal digits and is
+  described as an estimate, never as a claim about π itself.
+</p>
+
+<h3>3.6 Guided tour</h3>
+<p>
+  Four acts, each running a real search in the app so the tour teaches by doing
+  rather than by describing. The tour is keyboard-accessible and navigable by
+  act; its skip control is a link (navigation semantics).
+</p>
+
+<h3 class="page-break">3.7 Wish Cards — Royal Observatory Plate PNGs</h3>
+
+<h4>3.7.1 Tier rules</h4>
+<table>
+  <tr><th>Tier</th><th>Exact condition</th><th>Zone-2 label / heading</th></tr>
+  <tr><td class="tier-gold">Legendary (gold)</td><td>found and <code>expected &lt; 0.01</code></td><td><code>LEGENDARY · 1 IN N</code> / "You earned a Legendary card"</td></tr>
+  <tr><td class="tier-silver">Rare (silver)</td><td>found and <code>0.01 ≤ expected &lt; 1</code></td><td><code>RARE · 1 IN N</code> / "You earned a Rare card"</td></tr>
+  <tr><td class="tier-aurora">Lucky (aurora)</td><td>found and <code>expected ≥ 1</code></td><td><code>LUCKY FIND</code> / "You earned a Lucky card"</td></tr>
+  <tr><td class="tier-twilight">Twilight</td><td>query not found</td><td><code>UNCHARTED</code> / "You earned a Twilight card"</td></tr>
+</table>
+<p>
+  Thresholds live in <code>TIER_THRESHOLDS = { gold: 0.01, silver: 1 }</code>.
+  A non-finite or non-positive <code>expected</code> is treated as <code>1</code>
+  (Lucky) with no log, so a bad statistic cannot manufacture a rare card. The
+  tier is derived from the search result and is not user-editable.
+</p>
+
+<h4>3.7.2 Odds, copy and honesty</h4>
+<ul>
+  <li><code>P = 1 − Math.exp(−expected)</code>; one-in-N is <code>Math.round(1 / P)</code>, rendered by <code>describeMagnitude</code> (e.g. "1 million"). Odds appear only on Legendary and Rare cards.</li>
+  <li>Calm deterministic pools: Legendary "A rare coordinate." / "Against the odds, it is here."; Rare "Found in the stream." / "A 1-in-N coordinate."; Lucky "Found in π." / "Your place in the sequence."; Twilight "Not in this stretch of π."</li>
+  <li>The Uncharted tier label already names the result, so its factual line has no repeated lead. It reads, for example, <code>Absent in the first 2,000,000 digits.</code></li>
+  <li>Every card: <code>Odds assume random digits · Statistics, not magic.</code></li>
+  <li>The honesty banned-word guard applies to headline, subline, odds and quote; only the fine print may contain "magic". No em dashes, doubled hyphens, meme phrases or self-attributed quotes appear in user-facing copy.</li>
+  <li>Exactly one sourced attribution exists: <em>"We must know. We will know."</em> with <code>by: "David Hilbert, 1930"</code>. No italic fonts in canvas text.</li>
+  <li>Copy is deterministic per search (hash of mode, query, tier and subject), so the same search always produces the same card.</li>
+</ul>
+
+<h4>3.7.3 Styles, formats and visuals</h4>
+<ul>
+  <li>Both styles share one flat <strong>Royal Observatory Plate</strong>: a 1px hairline frame with registration ticks, a lowercase <code>π ATLAS</code> wordmark, manifest-derived edition tag, tracked tier label, centred hero with context strip, one factual line and a split QR footer.</li>
+  <li><strong>collectible</strong> (default) uses the tier's royal heritage palette. <strong>clean</strong> uses a single Archival Ivory Parchment palette. The old <code>paper</code> style is gone.</li>
+  <li>No gradients, glow, sparkles, star scatter, rounded hero plates or <code>— Pi Atlas</code> quotes. Only the Hilbert quote is attributed. No emoji are drawn on canvas.</li>
+  <li>The QR code sits on a sharp archival-ivory rectangle with a 0–2px corner radius, preserving the contrast needed by <code>jsqr</code>. The adjacent footer text block is vertically centred on that plate.</li>
+  <li>Formats: Square <code>1080×1080</code>, Story <code>1080×1920</code>, Wide <code>1200×630</code>; bottom content in Wide uses a reduced margin.</li>
+  <li>Theme contrast is tested: text ≥ 7:1 on both backgrounds, pill text ≥ 4.5:1, dim text ≥ 4.5:1.</li>
+</ul>
+
+<h4>3.7.4 QR, privacy and dedication</h4>
+<ul>
+  <li>QR payload is the exact share URL plus <code>src=card</code> in the hash query; Copy link and captions never include the marker.</li>
+  <li>Very long payloads fall back to the mode's query-free explorer URL, dropping <code>src</code>, to keep the plate scannable.</li>
+  <li>Hide my digits removes the query from card text, context strip, QR URL, caption and filename (<code>slug = hidden</code>).</li>
+  <li>An absent context strip is left empty. Uncharted cards may show a muted <code>Closest prefix: …</code> line when a prefix exists; no card draws "No nearby digits available".</li>
+  <li>Dedication accepts Latin letters (incl. accents), digits, spaces and <code>. - ’ &amp; ,</code>; collapses spaces, trims, caps at 24 characters; hint: "Latin letters only for now". It appears on the card and caption but never in the QR URL or filename.</li>
+  <li>QR plates: square <code>{836,836,172}</code>, collectible story <code>{72,1330,220}</code>, wide <code>{872,120,220}</code>, clean story <code>{410,1300,260}</code>.</li>
+</ul>
+
+<h4>3.7.5 Output, caption and budgets</h4>
+<ul>
+  <li>Filename: <code>pi-atlas-wish-{mode}-{slug}-{format}.png</code>, e.g. <code>pi-atlas-wish-digits-12-square.png</code>.</li>
+  <li>Caption includes tier-aware lead, one-in-N line where relevant, "Try yours:" link and <code>#PiAtlas #pi</code>; dedication is inserted before the link.</li>
+  <li>Measured PNGs for <code>q=12</code>: Square 67,957 B, Story 89,626 B, Wide 47,439 B. Not-found cards: 76,206 B / 99,610 B / 55,117 B. Budgets: 1.5 / 2.2 / 1.0 MB.</li>
+  <li>The flat archival plate removed grain, glow and heavy texture, so every format sits far below its limit. QR payload rules and filename rules are unchanged.</li>
+</ul>
+
+<h4>3.7.6 Dev gallery</h4>
+<p>
+  <code>#/dev/wish</code> renders 30 cards across tiers, formats, styles and
+  privacy states. It draws <strong>one full-size canvas at a time</strong>,
+  decodes each QR with <code>jsqr</code>, checks margins, minimum text size,
+  story safe zone, text overlap, QR overlap and colour family, then frees the
+  canvas (<code>canvas.width = 0</code>) before the next card, never more than
+  six full-size canvases alive. It writes a
+  <code>smoke-report/wish-contact-sheet.png</code> contact sheet
+  (1216×2211). The route is compiled only in dev/E2E builds; no
+  <code>dev/wish</code> string appears in production.
+</p>
+
+<h3 class="page-break">3.8 Sharing, history and settings</h3>
+<ul>
+  <li><strong>Deep links:</strong> every explorer search is encoded in the hash URL; copying and reopening restores the same state.</li>
+  <li><strong>Shared-result banner:</strong> a scanned QR with <code>src=card</code> shows "Someone found … in π" with the real result; "Search your own" clears only the marker, focuses and empties the input.</li>
+  <li><strong>History:</strong> a session list of recent searches with quick replay and clear.</li>
+  <li><strong>Theme:</strong> system/light/dark switch, persisted locally.</li>
+  <li><strong>Shortcuts:</strong> <code>w</code> opens the Wish Card dialog when focus is not in an input; <code>Esc</code> closes it and returns focus; a <code>?</code> Shortcuts dialog documents both.</li>
+  <li><strong>Share sheets:</strong> bottom sheets on small screens with labelled close, Escape and focus management.</li>
+</ul>
+
+<h3>3.9 Accessibility and responsiveness</h3>
+<ul>
+  <li>Skip link that preserves HashRouter ownership of the hash; focuses <code>&lt;main&gt;</code> programmatically.</li>
+  <li>ARIA live regions for results, semantic landmarks, visible focus rings, keyboard pattern painting, reduced-motion support.</li>
+  <li>Axe checks on the wish-card dialog and shared-result banner (no serious/critical violations).</li>
+  <li>Mobile-first: compact header, bottom navigation and sheets below 768px; verified no horizontal overflow for 28 viewport×orientation pairs from 280px to 1920px.</li>
+</ul>
+
+<!-- ============ 4 ============ -->
+<h2 class="page-break">4. System architecture</h2>
+
+<h3>4.1 Context</h3>
+<p>
+  The browser is the entire runtime. At build time the repository is compiled
+  into static assets; at runtime the app fetches its own shell, WASM module and
+  data chunks from the same origin. No component writes to a server.
+</p>
+<div class="flow">
+  <div class="step"><b>Build time</b>TypeScript → Vite chunks; font woff2 hashed into <code>dist/assets</code>; WASM bindings committed; dataset packed and checksummed.</div>
+  <div class="step"><b>Runtime data</b>Manifest fetch + SHA-256 verification → chunk fetch/cache → digit window and context extraction.</div>
+  <div class="step"><b>Runtime UI</b>React route + worker scan → result model → Wish Card renderer / QR / caption → download or share.</div>
+</div>
+
+<h3>4.2 Dataset pipeline</h3>
+<ul>
+  <li>Source digits: generated with y-cruncher using the Chudnovsky formula; the first 2,000,000 decimals verified against an independent mpmath computation in both the original and packaged forms.</li>
+  <li>Packing: decimal digits are stored 4 bits per digit in binary chunk files under <code>public/data/pi-2m/</code> (local/CI default) or <code>public/data/pi-1b/</code> (production). The build variable <code>VITE_PI_DATASET_URL</code> selects the root; the CI variable <code>PI_ATLAS_DATASET_URL</code> is mapped to it.</li>
+  <li>Each dataset tree ships <code>web-manifest.json</code> (camelCase, browser-facing) and <code>core-manifest.json</code> (snake_case, Rust/WASM), plus <code>chunks/chunk_NNNNN.bin</code>. The manifests record the total digit count, chunk layout and per-chunk plus whole-file SHA-256 checksums; the browser validates the web manifest at startup.</li>
+  <li><code>scripts/pack_dataset.py</code> packs and verifies any decimal input; <code>npm run verify:pi</code> re-checks the committed 2M fixture.</li>
+  <li>Positions are 1-based decimal positions after the point; matches overlap by design.</li>
+</ul>
+
+<h3>4.3 Engine, WASM and workers</h3>
+<ul>
+  <li>The committed bindings in <code>src/generated/pi-wasm/</code> expose a fast scanning backend; no Rust toolchain is required in CI.</li>
+  <li>Pure TypeScript engines in <code>src/engine/</code> are kept as parity references and are tested against the 2M fixture, alongside formatters such as <code>formatInt</code>, <code>formatBig</code>, <code>formatMagnitude</code> and <code>describeMagnitude</code>.</li>
+  <li>Long searches (notably pattern/scans over millions of cells) run in a Web Worker with a progress/cancel protocol so the UI remains responsive.</li>
+  <li><code>src/data/</code> owns the backend client, manifest store, chunk caching, digit-window extraction and context strips.</li>
+</ul>
+<p>
+  The worker protocol (<code>workerProtocol.ts</code>) exchanges <code>init</code>,
+  <code>job</code>, <code>cancel</code>, <code>clearCache</code>,
+  <code>storageStatus</code> and <code>dispose</code> requests for <code>ready</code>,
+  <code>progress</code>, <code>result</code>, <code>error</code> and <code>fatal</code>
+  responses. Job kinds are <code>exact</code>, <code>letters</code>,
+  <code>dates</code>, <code>pattern</code>, <code>stats</code>, <code>window</code>
+  and <code>samples</code>; one heavy job runs at a time and starting a new search
+  cancels the previous one. Chunks load with 8-way bounded concurrency
+  (<code>mapLimit</code>), each is checked for byte length and SHA-256 with
+  WebCrypto before entering the engine, and progress is reported in digits
+  checked against <code>totalDigits</code>. A 32-chunk LRU and an IndexedDB cache
+  (keyed by <code>datasetId:index</code>) avoid repeated downloads. Chunks that
+  leave the LRU are dropped from WASM when the last job pinning them ends, so
+  post-scan residency stays bounded; pattern searches use the parity-tested
+  Shift-And dispatch. Digit windows use fixed 2,048-digit buckets so the UI
+  never receives the full digit string.
+  API-facing DTOs translate the lean WASM results back into the original service
+  shape, keeping the React layer independent of the engine.
+</p>
+
+<h3>4.4 Routing and state</h3>
+<ul>
+  <li>HashRouter (<code>#/…</code>) keeps direct navigation and refresh working on GitHub Pages without rewrite rules; Vite uses a relative base for subpath hosting.</li>
+  <li>Query parameters encode the mode's search (<code>q</code>, <code>d</code>, etc.); <code>src=card</code> is a banner marker parsed strictly as a single exact value and stripped outside the Explorer.</li>
+  <li>Zustand stores hold ephemeral session state (history, theme); sharing state lives in the URL.</li>
+  <li>Because hash-only navigation does not remount the app, E2E/smoke <code>gotoHash</code> forces a reload between sequential searches.</li>
+</ul>
+
+<h3>4.5 Wish Card subsystem</h3>
+<p>
+  <code>src/wishcard/</code> is a self-contained lazy-loaded feature with a clear
+  data contract (<code>WishCardInput</code>, <code>WishOptions</code>):
+</p>
+<table>
+  <tr><th>Module</th><th>Responsibility</th></tr>
+  <tr><td><code>index.ts</code></td><td>Public API and builders from existing result objects.</td></tr>
+  <tr><td><code>tiers.ts</code></td><td>Thresholds, labels, <code>oneIn</code>, tier pills.</td></tr>
+  <tr><td><code>themes.ts</code></td><td>Per-tier colour palettes and contrast helpers.</td></tr>
+  <tr><td><code>copy.ts</code></td><td>Deterministic pools, honesty guard, dedication sanitizer, fine print.</td></tr>
+  <tr><td><code>caption.ts</code></td><td>Tier-aware captions, URL query/banner stripping.</td></tr>
+  <tr><td><code>layout.ts</code></td><td>Formats, text boxes, QR plates, cache key, slug and filename.</td></tr>
+  <tr><td><code>depth.ts</code></td><td>Depth/statistics helpers used by copy and odds.</td></tr>
+  <tr><td><code>render.ts</code></td><td>Royal Observatory Plate canvas renderer, wordmark, context strip, factual line and centred footer.</td></tr>
+  <tr><td><code>qr.ts</code></td><td>Local QR content generation and density fallback.</td></tr>
+  <tr><td><code>share.ts</code></td><td>Download, native share and caption copy helpers.</td></tr>
+  <tr><td><code>WishCardPreview.tsx</code></td><td>Result preview, tier heading, shimmer, actions.</td></tr>
+  <tr><td><code>WishCardDialog.tsx</code></td><td>Format/style/privacy controls, chips, dedication.</td></tr>
+  <tr><td><code>dev/WishGallery.tsx</code></td><td>One-at-a-time verification gallery and contact sheet.</td></tr>
+</table>
+<p>
+  Rendering is cached on every visible choice (format, style, privacy,
+  dedication, subject, tier) via <code>cacheKeyFor</code>. Canvas and QR code are
+  produced locally; no images are downloaded and no data leaves the browser.
+</p>
+
+<h3>4.6 Privacy and security posture</h3>
+<div class="callout note">
+  <strong>Privacy boundary.</strong> The QR is the only place <code>src=card</code>
+  is added, and only when the user shares a scanned card. Captions and Copy link
+  use the untouched share URL. Hide my digits removes the query everywhere on a
+  card, including the file name. No cookie, analytics or third-party request is
+  used. <code>VITE_*</code> variables are public by design and must never contain
+  secrets.
+</div>
+<p>
+  Untrusted URL text is never rendered as card copy: the banner builds its text
+  from app results, and <code>parseSrc</code> accepts only a single exact
+  <code>src=card</code> value. Fonts are self-hosted woff2 files bundled by Vite
+  from <code>src/assets/fonts/</code>.
+</p>
+
+<!-- ============ 5 ============ -->
+<h2 class="page-break">5. Technical specification</h2>
+
+<h3>5.1 Stack</h3>
+<table>
+  <tr><th>Concern</th><th>Choice</th></tr>
+  <tr><td>Language / UI</td><td>TypeScript, React 18, Vite 6, react-router-dom 7 (HashRouter)</td></tr>
+  <tr><td>Styling</td><td>Tailwind CSS 4 via <code>@tailwindcss/postcss</code>, custom semantic tokens</td></tr>
+  <tr><td>State</td><td>Zustand 5; URL as the source of truth for searches</td></tr>
+  <tr><td>Motion / icons</td><td>framer-motion 11, lucide-react</td></tr>
+  <tr><td>Virtualisation</td><td><code>@tanstack/react-virtual</code> 3</td></tr>
+  <tr><td>QR</td><td><code>qrcode</code> 1.5 (generation, drawn as integer modules); <code>jsqr</code> in E2E/gallery (decode)</td></tr>
+  <tr><td>Engine</td><td>Committed WASM bindings + pure TypeScript parity engines; Web Worker execution</td></tr>
+  <tr><td>Testing</td><td>Vitest 5, @testing-library/react, Playwright Chromium (1 worker), axe-core</td></tr>
+  <tr><td>Tooling</td><td>Python 3 for dataset scripts; Node ≥ 20; dependency-free custom lint</td></tr>
+</table>
+
+<h3>5.2 Repository layout</h3>
+<pre>public/data/pi-1b/         1B chunks + web/core manifests (production)
+public/data/pi-2m/         2M chunks + web/core manifests (local/CI default)
+public/pi-2m.txt           2M-digit parity fixture (+ .sha256)
+src/
+  data/                     WASM client, manifest store, digit windows
+  engine/                   pure parity engines + formatters
+  generated/pi-wasm/        committed WASM bindings
+  pages/                    Home, Explore (5 modes), OddsLab, About
+  components/               shell, nav, sheets, banner, dialogs
+  tour/                     four-act guided tour
+  stores/                   Zustand stores
+  wishcard/                 tiers, themes, copy, layout, renderer, QR, UI
+  wishcard/dev/             dev-only verification gallery
+  assets/fonts/             self-hosted woff2 + fonts.css
+scripts/                    lint, dataset pack/verify, OG image, PRD, smoke
+tests/unit/                 Vitest unit + integration (16 files)
+tests/e2e/                  Playwright against production preview
+tests/e2e-wish/             Playwright against dev server + gallery
+smoke-report/               generated smoke reports + contact sheet (gitignored)</pre>
+
+<h3>5.3 Key algorithms and data contracts</h3>
+<ul>
+  <li><strong>Expected occurrences:</strong> <code>(N − L + 1) / 10^L</code> for a search of length <code>L</code> over <code>N</code> digits. This drives tier thresholds and one-in-N odds.</li>
+  <li><strong>At-least-one probability:</strong> <code>P = 1 − exp(−expected)</code>; <code>oneIn = describeMagnitude(round(1 / P))</code>.</li>
+  <li><strong>Deterministic copy:</strong> a stable hash of the search selects from tier-specific headline, subline, quote and collector-tag pools.</li>
+  <li><strong>Dedication sanitizer:</strong> allow-list regex for Latin letters with accents, digits, space and a small punctuation set; whitespace collapse, trim, 24-character cap.</li>
+  <li><strong>Layout contract:</strong> <code>TextBox</code> rectangles with minimum font sizes; <code>layoutBoxes</code> plus <code>qrPlateFor(format, style)</code> drive both rendering and automated overlap checks.</li>
+  <li><strong>QR fallback:</strong> generate at up to version 9; if the marked URL is too dense, strip parameters to the query-free explorer URL.</li>
+</ul>
+<div class="callout note">
+  <strong>Disclosed discrepancy.</strong> The brief's illustrative digit-length
+  tiers (≤8 aurora, 9–10 silver, ≥11 gold) assume a different curve from the
+  engine's actual <code>(N−L+1)/10^L</code>. On the shipped 1B dataset that gives
+  L=9 → ~1 (aurora), L=10 → ~0.1 (silver), L=12 → ~0.001 (gold). The exact
+  threshold rules are authoritative; see decision W-D19.
+</div>
+
+<h3>5.4 Budgets and measured values</h3>
+<table>
+  <tr><th>Budget</th><th>Limit</th><th>Measured</th></tr>
+  <tr><td>Main bundle growth</td><td>≤ +0.5 KB gzip</td><td>72.23 KB gzip, within budget</td></tr>
+  <tr><td>Wish Card chunk</td><td>≤ 45 KB gzip</td><td>20.00 KB gzip</td></tr>
+  <tr><td>Square PNG</td><td>≤ 1.5 MB</td><td>67,957 B</td></tr>
+  <tr><td>Story PNG</td><td>≤ 2.2 MB</td><td>89,626 B</td></tr>
+  <tr><td>Wide PNG</td><td>≤ 1.0 MB</td><td>47,439 B</td></tr>
+  <tr><td>Full-size canvases in gallery</td><td>≤ 6 alive</td><td>1 at a time, freed before next</td></tr>
+</table>
+
+<h3>5.5 Build-time configuration</h3>
+<table>
+  <tr><th>Variable</th><th>Where</th><th>Purpose</th></tr>
+  <tr><td><code>VITE_SITE_URL</code></td><td>build</td><td>Canonical site root for QR/caption/filename logic and absolute <code>og:image</code>/<code>twitter:image</code> URLs; falls back to the Pages root.</td></tr>
+  <tr><td><code>VITE_BASE_PATH</code></td><td>build</td><td>Vite base path, defaults to <code>./</code>.</td></tr>
+  <tr><td><code>VITE_PI_DATASET_URL</code></td><td>build</td><td>Dataset root, defaults to <code>data/pi-2m/</code>; production uses <code>data/pi-1b/</code>.</td></tr>
+  <tr><td><code>VITE_E2E</code></td><td>build</td><td>Enables the dev-only gallery route in E2E builds.</td></tr>
+  <tr><td><code>PI_ATLAS_PAGES_DEPLOY</code></td><td>CI</td><td>Guard for GitHub Pages deployment.</td></tr>
+  <tr><td><code>PI_ATLAS_DATASET_URL</code></td><td>CI</td><td>Source for <code>VITE_PI_DATASET_URL</code> in the deploy build (default <code>data/pi-2m/</code>).</td></tr>
+  <tr><td><code>SMOKE_BASE_URL</code></td><td>smoke:live</td><td>Required explicit target; never inferred.</td></tr>
+  <tr><td><code>SMOKE_EXPECT_DIGITS</code></td><td>smoke</td><td>Optional assertion on manifest <code>total_digits</code>.</td></tr>
+  <tr><td><code>SMOKE_SKIP</code></td><td>smoke</td><td>Comma-separated check names to mark as SKIP.</td></tr>
+</table>
+
+<!-- ============ 6 ============ -->
+<h2 class="page-break">6. Build and development workflow</h2>
+
+<h3>6.1 Commands</h3>
+<pre>npm install                  # Node 20+
+npm run dev                  # Vite dev server :5173
+npm run lint                 # dependency-free lint (placeholders, console.log, whitespace)
+npm run typecheck            # tsc -b --noEmit
+npm test                     # Vitest, 16 files / 155 tests
+npm run build                # typecheck + Vite production build to dist/
+npm run test:e2e             # Playwright Chromium, production preview, 48 tests
+npm run test:e2e:wish        # Playwright Chromium, dev server + gallery, 19 tests
+npm run smoke:local          # read-only smoke over dist/, writes smoke-report/
+npm run verify:pi            # verify the committed 2M fixture
+npm run generate:og          # regenerate public/og.png
+npm run make:prd             # render PRD.html to PRD.pdf</pre>
+
+<h3>6.2 Dataset packaging</h3>
+<pre>python3 scripts/pack_dataset.py --input &lt;decimal.txt&gt; --output-dir &lt;out-dir&gt;
+# packs 4-bit digits into chunks, writes manifest with SHA-256 checksums, verifies it</pre>
+<p>
+  The committed fixture is regenerated with <code>npm run verify:pi</code>. The
+  1B dataset is produced outside CI with y-cruncher and packed once; no Rust or
+  large-number generation happens in CI.
+</p>
+
+<h3>6.3 Development discipline</h3>
+<ul>
+  <li>Run heavy commands under a memory cap, one at a time:
+    <code>systemd-run --user --scope -q -p MemoryMax=3G -p MemorySwapMax=0 &lt;command&gt;</code>.</li>
+  <li>Browser automation uses Playwright <strong>Chromium only</strong>, <strong>one worker</strong>.</li>
+  <li>Gallery and tests rendering many cards draw one full-size card at a time and free its canvas before the next.</li>
+  <li>No new runtime dependencies, network calls, analytics or emoji in canvas text.</li>
+  <li>Every design choice with a trade-off is recorded in <code>DECISIONS.md</code>.</li>
+</ul>
+
+<!-- ============ 7 ============ -->
+<h2 class="page-break">7. Testing and quality gates</h2>
+
+<h3>7.1 Test matrix</h3>
+<table>
+  <tr><th>Suite</th><th>Scope</th><th>Final result</th></tr>
+  <tr><td>Vitest unit/integration</td><td>Engines, formatters, tiers, copy, dedication, QR, captions, layout, sharing, components, chunk/cache hardening, social metadata</td><td><strong>155/155</strong> (16 files)</td></tr>
+  <tr><td>Playwright main E2E</td><td>Home, five explorers, tour, share, odds, statistics, theme, keyboard, responsive sweep (28 viewport pairs)</td><td><strong>48/48</strong></td></tr>
+  <tr><td>Playwright wish E2E</td><td>Four tiers, three PNG formats/budgets, twilight filename, 30-card gallery, contact sheet, privacy, dedication, axe, shortcut</td><td><strong>19/19</strong></td></tr>
+  <tr><td>Smoke (:local)</td><td>Sequential read-only walk over the production preview; 21 checks (18 required + 3 soft)</td><td><strong>PASS</strong>, 0 console errors, 0 failed requests</td></tr>
+</table>
+
+<h3>7.2 Wish-card gallery checks</h3>
+<p>
+  Every one of the 30 cards is checked for: QR decode with the style-correct
+  plate, text boxes inside margins, ≥12px minimum font size, story safe zone,
+  text-to-text overlap, text-to-QR overlap, and tier colour family. Clean-style
+  cards skip the collectible box geometry checks because they use fixed legacy
+  coordinates. The contact sheet is written to
+  <code>smoke-report/wish-contact-sheet.png</code> (1216×2211).
+</p>
+
+<h3>7.3 Smoke checks</h3>
+<p>
+  The 21 checks comprise 18 REQUIRED and 3 WARN-only checks.
+  REQUIRED: <code>home-loads</code>, <code>no-console-errors</code>,
+  <code>no-failed-requests</code>, <code>manifest-ok</code>,
+  <code>digits-12</code>, <code>digits-feynman</code>,
+  <code>digits-not-found</code>, <code>letters-pi</code>,
+  <code>shapes-preset</code>, <code>deep-link-roundtrip</code>,
+  <code>wishcard-download</code>, <code>wishcard-tiers</code>,
+  <code>wishcard-qr-host</code>, <code>banner-from-qr</code>,
+  <code>wishcard-fonts</code>, <code>wishcard-hide-digits</code>,
+  <code>mobile-layout</code>, <code>prod-hygiene</code>. WARN-only:
+  <code>first-result-time</code>, <code>data-transfer</code>,
+  <code>memory-hint</code>. SKIP never fails the run. The smoke runner picks a
+  free port, builds only when stale, and always stops the preview in a
+  <code>finally</code> block.
+</p>
+
+<h3>7.4 Final verification summary</h3>
+<div class="kpis">
+  <div class="kpi"><b>155</b><small>unit tests</small></div>
+  <div class="kpi"><b>48</b><small>main E2E</small></div>
+  <div class="kpi"><b>19</b><small>wish E2E</small></div>
+  <div class="kpi"><b>21</b><small>smoke checks</small></div>
+</div>
+<p class="small">
+  Lint and typecheck clean; production build 4.29s; no <code>dev/wish</code> in
+  <code>dist/</code>; main bundle 72.23 KB gzip; wish chunk 20.00 KB gzip;
+  all three PNGs under budget. Changes remain uncommitted for review; nothing
+  was pushed or deployed.
+</p>
+
+<!-- ============ 8 ============ -->
+<h2 class="page-break">8. Deployment and operations</h2>
+<ul>
+  <li><strong>Artifact:</strong> the static <code>dist/</code> directory. Any static host works; hash routing removes the need for rewrites.</li>
+  <li><strong>GitHub Pages:</strong> the workflow deploys only when <code>PI_ATLAS_PAGES_DEPLOY=true</code>. Its <code>PI_ATLAS_DATASET_URL</code> repository variable (default <code>data/pi-2m/</code>) is baked into the deploy build as <code>VITE_PI_DATASET_URL</code>; set it to <code>data/pi-1b/</code> for the full site. See <code>docs/GITHUB_PAGES_DEPLOYMENT.md</code> and <code>docs/BROWSER_SEARCH_ARCHITECTURE.md</code>; <code>DEPLOY.md</code> is older server-era history.</li>
+  <li><strong>Subpath hosting:</strong> Vite's relative <code>base</code> keeps assets under <code>/pi-atlas/</code>; HashRouter keeps deep links working on refresh.</li>
+  <li><strong>Fonts:</strong> self-hosted woff2 imported from <code>src/assets/fonts/</code> and hashed by Vite; no font CDN.</li>
+  <li><strong>OG image:</strong> <code>public/og.png</code> generated locally by <code>scripts/make_og.mjs</code>. A Vite HTML transform rewrites <code>og:image</code> and <code>twitter:image</code> to absolute HTTPS URLs at build time using <code>VITE_SITE_URL</code>, falling back to the canonical Pages root when unset.</li>
+  <li><strong>Secrets:</strong> none in the frontend; <code>VITE_*</code> values are public and must never hold tokens.</li>
+  <li><strong>Smoke before deploy:</strong> <code>npm run smoke:local</code> then, with an explicit URL and permission, <code>npm run smoke:live</code> (read-only, sequential, never in parallel).</li>
+</ul>
+<div class="callout danger">
+  Do not put credentials in <code>VITE_*</code> variables: Vite embeds them in
+  the public JavaScript bundle.
+</div>
+
+<!-- ============ 9 ============ -->
+<h2 class="page-break">9. Design decisions and trade-offs</h2>
+<p>
+  The full, numbered record is in <code>DECISIONS.md</code>. Representative
+  decisions are summarised here.
+</p>
+<table>
+  <tr><th>ID</th><th>Decision</th><th>Rationale</th></tr>
+  <tr><td>D10–D14</td><td>Honesty labelling, dataset provenance, tour link semantics, router-safe skip link, rebuild-before-E2E.</td><td>Keep claims honest and navigation correct.</td></tr>
+  <tr><td>W-D1…W-D8</td><td>Original Wish Card feature: local canvas, deterministic copy, fixed QR plates and manifest-derived dataset wording.</td><td>Local-only rendering, small PNGs, no fake numbers. Some original visuals were superseded by W-D20.</td></tr>
+  <tr><td>F-1</td><td>Move font CSS/woff2 into <code>src/assets/fonts/</code> and import from <code>main.tsx</code>.</td><td>Removes the Vite build warning; fonts stay self-hosted.</td></tr>
+  <tr><td>SB-1…SB-6</td><td><code>src=card</code> only in QR payload, strict single-value parse, fixed banner slot, semantic tokens, strip marker outside Explorer.</td><td>Privacy and no layout shift.</td></tr>
+  <tr><td>SB-7…SB-9</td><td>Sequential smoke runner, manifest-derived expectations plus fixed checkpoints 148/762, free-port preview lifecycle.</td><td>Deterministic, polite, no stale servers.</td></tr>
+  <tr><td>W-D10</td><td>One result PNG path; remove old export from <code>src/lib/share.ts</code>.</td><td>No competing export paths.</td></tr>
+  <tr><td>W-D11/W-D12</td><td>Exact thresholds, honest odds, fine print, banned words, only Hilbert attributed.</td><td>Collectible without overclaiming.</td></tr>
+  <tr><td>W-D13/W-D14</td><td>Collectible default with clean legacy style; Latin-only dedication.</td><td>Continuity plus font-safe canvas text.</td></tr>
+  <tr><td>W-D15/W-D16</td><td>Grain reduced then removed; warm gold sheen hues.</td><td>Meet PNG budgets and colour-family checks.</td></tr>
+  <tr><td>W-D17/W-D18</td><td>Style-specific QR plates and box checks; reload on hash navigation in browser checks.</td><td>Avoid false failures and stale state.</td></tr>
+  <tr><td>W-D19</td><td>Disclose the 1B digit-length tier discrepancy.</td><td>Exact threshold rules are authoritative.</td></tr>
+  <tr><td>W-D20/W-D21</td><td>One flat Royal Observatory Plate with royal tier palettes, plus calm human copy across the app.</td><td>Archival clarity without overclaiming or cheesy phrases.</td></tr>
+  <tr><td>W-D22</td><td>Lowercase π wordmark, empty context strips, sharp ivory QR plate, centred footer and no repeated Uncharted prefix.</td><td>Final visual polish with no change to privacy, QR payloads, sharing rules or budgets.</td></tr>
+  <tr><td>D24–D27</td><td>Verify before cache write, deferred WASM eviction, Shift-And pattern default, build-time absolute social image URLs.</td><td>Bounded 1B memory, no corrupt cache entries, faster pattern scans and reliable social unfurls.</td></tr>
+</table>
+
+<!-- ============ 10 ============ -->
+<h2 class="page-break">10. Limitations and future work</h2>
+<ul>
+  <li>Normality of π is unproven; odds are an idealised random-digit model, never a claim.</li>
+  <li>Large dataset first load is dominated by same-origin transfer and verification; performance on mid-range real devices was not measured end-to-end.</li>
+  <li>Letter words are capped at 12 characters and patterns at the painted cell count; these bounds are documented in the UI.</li>
+  <li>The brief's illustrative digit-length tier boundaries conflict with the engine's expected-count curve; disclosed in W-D19.</li>
+  <li>Real-device testing (Android/iOS), Lighthouse scoring, foldable postures and virtual-keyboard occlusion were unavailable in headless Chromium.</li>
+</ul>
+
+<h3>10.1 Remaining implementation caveats (disclosed)</h3>
+<table>
+  <tr><th>Area</th><th>Caveat</th></tr>
+  <tr><td>Whole-file checksum</td><td>Browser startup validates the manifest structure and each chunk's SHA-256; the manifest's <code>sha256Packed</code> whole-file digest is verified by the packing/web-tree/streaming Python scripts, not at page load.</td></tr>
+  <tr><td>Documentation drift</td><td><code>DEPLOY.md</code> is now explicitly marked historical, and only older <code>DECISIONS.md</code> entries still describe the retired Rust HTTP service. Current truth is the browser-only WASM worker over static chunks; use <code>docs/BROWSER_SEARCH_ARCHITECTURE.md</code>, <code>docs/GITHUB_PAGES_DEPLOYMENT.md</code>, <code>README.md</code> and <code>REPORT.md</code>. User-facing strings were humanized and no longer imply a server.</td></tr>
+  <tr><td>Dataset root selection</td><td><code>VITE_PI_DATASET_URL</code> defaults to <code>data/pi-2m/</code> in <code>localBackend.ts</code>. Production must set it to <code>data/pi-1b/</code> (via CI <code>PI_ATLAS_DATASET_URL</code>); otherwise the app serves the 2M fixture.</td></tr>
+  <tr><td>Uncharted detail</td><td>The tier label is always <code>UNCHARTED</code>. A closest prefix is shown only as a muted context line when the card has no context strip and a prefix exists; otherwise that zone stays empty. The factual line never repeats the tier name.</td></tr>
+</table>
+
+<h3>10.2 Production hardening (resolved)</h3>
+<table>
+  <tr><th>Area</th><th>Resolution</th></tr>
+  <tr><td>IndexedDB write ordering</td><td><code>ChunkLoader</code> now verifies byte length and SHA-256 first and only then calls the cache's <code>onVerified</code> hook. Corrupt cached bytes delete their IndexedDB key before the <code>ChunkIntegrityError</code> propagates, so a retry goes to the network.</td></tr>
+  <tr><td>WASM chunk residency</td><td><code>PiEngine.drop_chunk()</code> is wired through the loader's LRU eviction hook and a per-job residency manager. Full scans still pin every chunk for <code>require_all()</code>, then drop all non-LRU chunks when the job ends, so post-scan residency stays at the 32-chunk JS bound.</td></tr>
+  <tr><td>Pattern scan implementation</td><td><code>search_pattern()</code> now dispatches to the parity-tested bit-parallel Shift-And implementation. The direct scan remains the reference; Rust unit, parity and browser E2E checks all pass.</td></tr>
+  <tr><td>Social unfurls</td><td><code>og:image</code> and <code>twitter:image</code> are rewritten at build time to absolute HTTPS URLs using <code>VITE_SITE_URL</code>, with the canonical Pages root as a fallback.</td></tr>
+</table>
+
+<h3>Possible future work</h3>
+<ul>
+  <li>Additional dataset sizes or verified constants with the same manifest pipeline.</li>
+  <li>More collectible themes, while preserving the honesty guard and size budgets.</li>
+  <li>Optional local persistence of favourite cards, with the same no-upload posture.</li>
+</ul>
+
+<!-- ============ 11 ============ -->
+<h2 class="page-break">11. Appendices</h2>
+
+<h3>Appendix A — Verification record</h3>
+<table>
+  <tr><th>Item</th><th>Value</th></tr>
+  <tr><td>Local dataset</td><td>2,000,000 digits; checkpoints <code>12</code>=148, <code>999999</code>=762</td></tr>
+  <tr><td>2M SHA-256</td><td><code>efcbafbaf15047f32f70d8b1b008bac527e9f76d4d4b995d7f36dfd6dd8dc7ed</code></td></tr>
+  <tr><td>Production dataset</td><td>1,000,000,000 digits when built with <code>VITE_PI_DATASET_URL=data/pi-1b/</code>; local CI builds use 2,000,000. Card wording is manifest-derived.</td></tr>
+  <tr><td>Build</td><td>2068 modules, 4.29s; main 72.23 KB gzip; CSS 7.20 KB gzip; WASM 86.60 KB gzip</td></tr>
+  <tr><td>Bundle budget</td><td>Main 72.23 KB gzip, within the +0.5 KB growth budget; Wish chunk 20.00 KB</td></tr>
+  <tr><td>Wish chunk</td><td>20.00 KB gzip (limit 45 KB)</td></tr>
+  <tr><td>PNG (q=12)</td><td>67,957 B / 89,626 B / 47,439 B (square / story / wide)</td></tr>
+  <tr><td>PNG (not found)</td><td>76,206 B / 99,610 B / 55,117 B in smoke</td></tr>
+  <tr><td>Contact sheet</td><td><code>smoke-report/wish-contact-sheet.png</code>, 1216×2211, 251,918 B</td></tr>
+  <tr><td>Smoke transfer</td><td>1.12 MB total on the local 2M build; 0 failed requests</td></tr>
+  <tr><td>1B preview smoke</td><td><code>SMOKE_EXPECT_DIGITS=1000000000</code> PASS: first result 11,940 ms (WARN), shapes preset 58,869 ms (slow but under 60 s), 227.9 MB JS heap, 1.48 MB counted transfer</td></tr>
+  <tr><td>Production hygiene</td><td>No <code>dev/wish</code> in 24 built files</td></tr>
+</table>
+
+<h3>Appendix B — Glossary</h3>
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td>Expected count</td><td><code>(N−L+1)/10^L</code>, the number of occurrences a random search of length L should produce in N digits.</td></tr>
+  <tr><td>One-in-N</td><td><code>round(1/(1−exp(−expected)))</code>, the intuitive rarity line on gold/silver cards.</td></tr>
+  <tr><td>Position</td><td>1-based decimal position after the point; matches overlap.</td></tr>
+  <tr><td>Hide my digits</td><td>Privacy mode that removes the query from card, QR, caption and filename.</td></tr>
+  <tr><td><code>src=card</code></td><td>Marker added only to a card's QR payload; opens the shared-result banner.</td></tr>
+  <tr><td>Collectible / clean</td><td>The two styles of the Royal Observatory Plate: royal tier palettes and Archival Ivory Parchment.</td></tr>
+  <tr><td>Royal Observatory Plate</td><td>The shared flat five-zone archival card layout with hairline frame and registration ticks.</td></tr>
+  <tr><td>Plate</td><td>Fixed sharp ivory rectangle on a card where the QR code is drawn and decoded.</td></tr>
+  <tr><td>Smoke</td><td>Read-only sequential Playwright walk over a built app, with strict pass/fail reporting.</td></tr>
+</table>
+
+<div class="footer-note">
+  π Atlas — Product Requirements Document v1.0. Generated from
+  <code>PRD.html</code> with <code>npm run make:prd</code>. Source of truth: the
+  repository's code, tests and <code>DECISIONS.md</code>. This document describes
+  the implemented system as of 19 November 2026.
+</div>
+
+</body>
+</html>

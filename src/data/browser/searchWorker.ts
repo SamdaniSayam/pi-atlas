@@ -12,6 +12,7 @@ import initWasm, { PiEngine } from "../../generated/pi-wasm/pi_wasm.js";
 import { ChunkLoader, ChunkIntegrityError } from "./chunkLoader";
 import { chunkForPosition, chunksForRange, type WebDatasetManifest } from "./manifest";
 import { cachedFetcher, clearChunkCache, chunkCacheStatus } from "./chunkCache";
+import { WasmChunkResidency } from "./wasmChunkResidency";
 import { mapLimit } from "./parallel";
 import {
   dateSequences,
@@ -40,6 +41,7 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope;
 let engine: PiEngine | null = null;
 let manifest: WebDatasetManifest | null = null;
 let loader: ChunkLoader | null = null;
+let residency: WasmChunkResidency | null = null;
 /** Job ids explicitly cancelled by the main thread. */
 const cancelled = new Set<number>();
 /** Currently executing job (one heavy search at a time). */
@@ -76,10 +78,12 @@ function throwIfCancelled(id: number): void {
 /**
  * Ensure a set of chunks is resident in the engine, streaming progress.
  * Verified bytes come from the IndexedDB→network ChunkLoader, then are pushed
- * into WASM (which re-verifies SHA-256 — defence in depth).
+ * into WASM (which re-verifies SHA-256 — defence in depth). The job pins these
+ * indices until it finishes; dropped LRU entries are then freed from WASM too.
  */
 async function ensureChunks(indices: number[], id: number): Promise<void> {
   if (!engine || !loader || !manifest) throw new Error("worker not initialised");
+  residency?.beginJob(id, indices);
   const total = manifest.totalDigits;
   // Only missing chunks need work. Chunks already resident in WASM are reused
   // across searches, so repeat searches skip this entirely.
@@ -90,8 +94,8 @@ async function ensureChunks(indices: number[], id: number): Promise<void> {
     throwIfCancelled(id);
     const bytes = await loader!.loadChunk(index);
     throwIfCancelled(id);
-    // WASM re-verifies SHA-256 (defence in depth). cachedFetcher has already
-    // persisted verified bytes to IndexedDB, so no second write is needed.
+    // WASM re-verifies SHA-256 (defence in depth). cachedFetcher persists only
+    // bytes that ChunkLoader has already verified, so no second write is needed.
     engine!.set_chunk(index, bytes);
     done += manifest!.chunks[index]?.digits ?? manifest!.chunkDigits;
     progress(id, Math.min(done, total), total);
@@ -256,6 +260,9 @@ async function runJob(id: number, kind: string, payload: unknown, requestId?: nu
     post({ type: "error", id, requestId, error: message });
   } finally {
     cancelled.delete(id);
+    // The scan is over: release WASM copies of chunks that fell out of the JS
+    // LRU. Full scans keep every chunk until this point for require_all().
+    residency?.endJob(id);
     if (activeJob === id) activeJob = null;
   }
 }
@@ -278,9 +285,18 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
           if (!res.ok) throw new Error(`chunk fetch failed: HTTP ${res.status}`);
           return res.arrayBuffer();
         };
+        const cache = cachedFetcher(networkFetch, manifest.datasetId);
+        residency = new WasmChunkResidency({
+          engine,
+          loader: { cachedIndices: () => loader!.cachedIndices() },
+          chunkCount: manifest.chunkCount,
+        });
         loader = new ChunkLoader({
           manifest,
-          fetcher: cachedFetcher(networkFetch, manifest.datasetId),
+          fetcher: cache.fetcher,
+          onVerified: cache.onVerified,
+          onCorruptCached: cache.onCorruptCached,
+          onEvict: (index) => residency?.noteEvicted(index),
         });
         post({
           type: "ready",
@@ -318,6 +334,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         engine = null;
         loader?.clear();
         loader = null;
+        residency = null;
         break;
       }
     }

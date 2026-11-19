@@ -55,11 +55,11 @@ export function compareToDataset(
   if (log10Expected >= 0.3) {
     verdict = "Expected to appear many times in the dataset.";
   } else if (log10Expected >= -0.3) {
-    verdict = "Right at the edge of what the dataset can hold — a match would be a coin flip.";
+    verdict = "Right at the edge of what the dataset can hold. A match would be a coin flip.";
   } else if (log10Expected > -3) {
-    verdict = "A match would be lucky; it is not expected in two million digits.";
+    verdict = "A match would be lucky. It is not expected in this dataset.";
   } else {
-    verdict = "Astronomically beyond the dataset — do not expect to find this.";
+    verdict = "Astronomically beyond the dataset. Do not expect to find this.";
   }
   void anchors;
   return {

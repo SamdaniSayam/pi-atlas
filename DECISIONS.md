@@ -238,13 +238,14 @@ run the Rust service; the 477 MB 1B dataset must stay out of Git.
   the backend (expected, not mocked). Font 404s found in live verification were
   fixed by making `@font-face` URLs relative and guarded in CI.
 
-**Limit / stop point.** No cloud CLI or credentials exist in this environment;
-the public HTTPS API and `PI_ATLAS_API_URL` variable require the user's cloud
-account and DNS (exact commands in DEPLOY.md). Until then the deployed site is
-a real static production build with a graceful API-down state — not a local
-demo or mock. `og:image` stays relative (some crawlers need an absolute URL;
-documented for a custom domain). No force-push or overwriting occurred: repo
-`SamdaniSayam/pi-atlas` was created fresh after confirming the name was free.
+**Limit / stop point (historical).** No cloud CLI or credentials existed in this
+environment; the retired public HTTPS API and `PI_ATLAS_API_URL` variable would
+have required the user's cloud account and DNS (exact commands in the historical
+DEPLOY.md). The API was later removed in favour of browser-only static chunks.
+The relative `og:image` limitation recorded here was resolved by D27, which
+rewrites both social image tags to absolute HTTPS URLs at build time. No
+force-push or overwriting occurred: repo `SamdaniSayam/pi-atlas` was created
+fresh after confirming the name was free.
 
 ## Wish card decisions (W0–W5)
 
@@ -384,15 +385,18 @@ probability `P = 1 - Math.exp(-expected)` and `Math.round(1 / P)`; the new
 "1 in 1 million"). Odds appear on gold/silver only.
 
 ### W-D12 — Tier names, labels and honest copy
-Pill/heading labels are Legendary / Rare / Lucky / Twilight (twilight also uses
-"SO CLOSE" or "BEYOND THE HORIZON"). Every card prints the exact fine print
+Heading labels are Legendary / Rare / Lucky / Twilight and the tracked zone-2
+label is `LEGENDARY · 1 IN N`, `RARE · 1 IN N`, `LUCKY FIND` or `UNCHARTED`
+(superseded by W-D20). Every card prints the exact fine print
 `Odds assume random digits · Statistics, not magic.`; the honesty guard bans
-overclaiming words in headlines, sublines, odds and quotes. Only the Hilbert
-quote carries `by: "— David Hilbert, 1930"`; no italic font markers anywhere.
+overclaiming words in headlines, sublines, odds and quotes. The Hilbert quote
+carries the clean attribution `by: "David Hilbert, 1930"` (superseded by W-D21);
+no italic font markers anywhere.
 
 ### W-D13 — Collectible default, clean is the old Night layout
-`collectible` is the new default tiered, emotional, collectible style. The
-former Night layout is preserved as the `clean` style; `paper` was removed.
+`collectible` is the default tiered style and `clean` preserves the former Night
+layout; `paper` was removed. Both now share the flat Royal Observatory Plate
+(W-D20), so "emotional" no longer describes the copy (W-D21).
 Reason: keep the old look available without two names for it.
 
 ### W-D14 — Latin-only dedication
@@ -403,7 +407,7 @@ The dedication is card/caption text only — never in the QR URL or filename.
 Reason: the bundled fonts have no emoji glyphs and canvas text must stay local
 and predictable.
 
-### W-D15 — PNG size budgets and grain removal (W-D9)
+### W-D15 — PNG size budgets and grain removal
 Budgets: Square ≤1.5 MB, Story ≤2.2 MB, Wide ≤1.0 MB. The first collectible
 square was 2.28 MB; reducing seeded grain 5% → 2% only reached 2.07 MB, so
 per the required order grain was removed (digit texture retained) and the
@@ -439,3 +443,77 @@ a different expected-count curve than the engine actually uses,
 L=12 → ~0.001 (gold). The implementation follows the exact threshold rules in
 W-D11 (which are authoritative), not the illustrative digit boundaries. This
 is called out here so the tier display is not mistaken for a bug.
+
+### W-D20 — Royal Observatory Plate redesign
+Cards now share one flat five-zone archival layout (header + rule, tracked tier
+label, centred hero with context strip, one factual line, split QR footer) with
+hairline frame and registration ticks; royal tier palettes and a single Archival
+Ivory clean style replace gradients, glow, sparkles, star scatter, rounded hero
+plates and pill fills, with no new fonts, dependencies or bundle weight.
+
+### W-D21 — Calm editorial copy, site-wide
+Em dashes and `--`/`---` were removed from user-facing text in favour of calm
+editorial sentences, the cheesy AI-ism pools and self-attributed `— Pi Atlas`
+quotes are gone (only `David Hilbert, 1930` remains), edition tags come from the
+manifest, and stale server-side/Rust wording was replaced with accurate
+local/device privacy wording. Fine print and all privacy, odds and link rules
+are unchanged.
+
+### W-D22 — Final archival plate polish
+The wordmark keeps the Greek `π` lowercase, empty context strips stay empty
+(Uncharted cards may show only a muted `Closest prefix` line), the QR sits on a
+sharp Archival Ivory plate with the footer centred on it, and the Uncharted tier
+no longer repeats its label in the factual line. QR payloads, decode checks,
+share links and PNG budgets are unchanged.
+
+## Production hardening decisions (D24–D27)
+
+### D24 — Deferred WASM eviction, not immediate `drop_chunk()`
+`PiEngine::set_chunk()` copies bytes into WASM-owned buffers, and a full scan
+needs every chunk resident for `require_all()`. Calling `drop_chunk()` as soon as
+`ChunkLoader` evicts an LRU entry would break an in-flight scan. A new
+`WasmChunkResidency` coordinator receives `ChunkLoader.onEvict`, records the
+indices each job pins in `beginJob()`, and syncs after `endJob()`/`cancelJob()`.
+Any WASM chunk that is neither in the JS LRU nor pinned by an active job is then
+dropped. Reason: residency peaks at dataset size only while a full scan truly
+needs it and settles back to the 32-chunk JS bound afterwards, including across
+repeated 1B scans.
+
+### D25 — Verify length and SHA-256 before any IndexedDB write
+`cachedFetcher()` previously returned a handle whose fetcher wrote raw network
+bytes to IndexedDB before verification. It now returns
+`{ fetcher, onVerified, onCorruptCached }`: the fetcher only tags bytes as
+`network` or `cache`, and `ChunkLoader` calls `onVerified` after its length and
+WebCrypto SHA-256 checks pass. Cached bytes that fail verification call
+`onCorruptCached`, which deletes that `datasetId:index` key before the
+`ChunkIntegrityError` propagates, so the retry falls through to the network.
+The storage layer is a swappable `ChunkCacheStorage`, which keeps the tests
+independent of IndexedDB. Reason: corrupt or partial responses can no longer
+poison the cache, and a bad existing entry self-heals instead of failing every
+future session.
+
+### D26 — Shift-And is the production pattern implementation
+`search_pattern()` now dispatches to `search_pattern_optimized()`; the direct
+TS-parity scan stays as `search_pattern_direct()` and as the parity reference.
+The optimized bit-parallel filter was already covered by
+`parity_optimized_vs_direct_randomised`, and the generated WASM was rebuilt
+after the dispatch change. Rust pattern tests, `test:wasm`, `pattern` parity and
+both browser E2E suites pass. Reason: use the faster implementation without
+changing the API or the reference semantics.
+
+### D27 — Resolve social images to absolute HTTPS URLs at build time
+Static hosting cannot inject crawler-facing URLs at request time. A small Vite
+`transformIndexHtml` plugin rewrites `og:image` and `twitter:image` in
+`index.html` using `src/lib/socialMetadata.ts`. `VITE_SITE_URL` is normalized to
+an absolute HTTPS root; missing, non-HTTPS or malformed values fall back to
+`https://samdanisayam.github.io/pi-atlas/`. `twitter:card=summary_large_image`
+was added alongside the image tags, and the Pages workflow supplies the same
+variable used by Wish Card links. Reason: reliable unfurls on GitHub Pages and
+custom domains without a runtime server or host-specific HTML edits.
+
+### SB-10 (smoke) — Wait for focus and avoid the shared-memory limit
+The smoke runner now waits for `#digits-q` to become the active element after
+“Search your own” instead of asserting immediately against `SharedBanner`’s
+next-macrotask focus. Chromium also launches with `--disable-dev-shm-usage` for
+large dataset runs. Reason: remove a timing race and prevent renderer crashes
+from `/dev/shm` exhaustion during 1B chunk scans.

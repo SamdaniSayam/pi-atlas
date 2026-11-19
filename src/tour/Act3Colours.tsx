@@ -104,7 +104,7 @@ export default function Act3Colours() {
       <ActHeader title="Ten colours, one ocean">
         <p className="m-0">
           Give every digit a colour and the stream becomes a landscape. Below, the
-          first 288 digits of π switch between their values and their colours — then a
+          first 288 digits of π switch between their values and their colours. Then a
           real search looks for the horizontal pair{" "}
           <span className="panel-2 mono px-1.5 py-0.5 text-xs">1&nbsp;2</span> somewhere in
           a billion cells:
@@ -122,12 +122,12 @@ export default function Act3Colours() {
             <strong className="mono" style={{ color: "var(--accent)" }}>
               {result.first !== null ? `pos ${formatInt(result.first)}` : "not found"}
             </strong>{" "}
-            · {formatInt(result.total)}+ matches — chance {formatOneIn(1 / 100)} per spot,
+            · {formatInt(result.total)}+ matches. Chance {formatOneIn(1 / 100)} per spot,
             so the dataset is flooded with them.
           </p>
         ) : failed ? (
           <p className="mb-0 mt-2 text-sm" style={{ color: "var(--error)" }} role="alert">
-            The search service is unreachable — try again in a moment.
+            Local search data is unavailable. Try again in a moment.
           </p>
         ) : (
           <p className="mb-0 mt-2 text-sm" style={{ color: "var(--text-2)" }}>Searching…</p>
@@ -137,7 +137,7 @@ export default function Act3Colours() {
       <p className="mb-0 mt-5 text-sm" style={{ color: "var(--text-2)" }}>
         <strong style={{ color: "var(--text)" }}>Colours are digits in disguise:</strong>{" "}
         every pattern you paint is a sequence of digit constraints. The Probability
-        section of each result tells you exactly how rare your pattern should be — and
+        section of each result tells you exactly how rare your pattern should be, and
         the search engine shows what π actually contains.
       </p>
     </div>

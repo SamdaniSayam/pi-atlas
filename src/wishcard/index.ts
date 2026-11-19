@@ -13,7 +13,7 @@ import type { WishCardInput, WishSubject } from "./types";
 export { buildCaption, stripQueryFromUrl, stripSrcCard } from "./caption";
 export {
   FINE_PRINT, HEADLINES, HONESTY_BANNED, QUOTES, SUBLINES,
-  datasetShort, datasetWords, datasetWordsWithDigits, eyebrow,
+  datasetShort, datasetWords, datasetWordsWithDigits, editionTag, eyebrow,
   hashString, pickCopy, previewLine, sanitizeDedication,
 } from "./copy";
 export { formatDepth } from "./depth";

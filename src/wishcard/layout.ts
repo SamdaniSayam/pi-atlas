@@ -1,4 +1,4 @@
-/** Fixed card sizes, layout boxes, text fitting, naming and cache keys. */
+/** Fixed card sizes, five-zone layout boxes, text fitting, naming and cache keys. */
 import { BRAND_HANDLE } from "../constants";
 import type { WishCardInput, WishFormat, WishOptions } from "./types";
 
@@ -34,79 +34,86 @@ export interface TextBox {
 interface Rect { x: number; y: number; w: number; h: number }
 interface Plate { x: number; y: number; size: number }
 
+/**
+ * Zone 1 header + rule, zone 2 tier label, zone 3 hero + context,
+ * zone 4 factual line, zone 5 split footer. Boxes carry the text only; footer
+ * lines are centred on their QR plate. Hairlines and registration ticks are
+ * drawn from `frame` and rule Ys.
+ */
 export interface FormatLayout {
+  frame: Rect;
+  headerRuleY: number;
+  footerRuleY: number;
   header: Rect;
-  pill: Rect;
-  headline: Rect;
-  subline: Rect;
-  plate: Rect;
-  odds: Rect;
-  quote: Rect;
-  attribution: Rect;
-  footer: Rect;
-  qr: Plate;
   tag: Rect;
+  tier: Rect;
+  hero: Rect;
+  context: Rect;
+  fact: Rect;
+  dedication: Rect;
   scan: Rect;
   site: Rect;
-  handle: Rect;
   fine: Rect;
+  /** Footer text column for the clean style, which centres its QR plate. */
+  cleanFooter: Rect;
+  qr: Plate;
 }
 
 export const LAYOUTS: Record<WishFormat, FormatLayout> = {
   square: {
-    header: { x: 72, y: 72, w: 520, h: 58 },
-    pill: { x: 72, y: 190, w: 380, h: 52 },
-    headline: { x: 72, y: 250, w: 936, h: 190 },
-    subline: { x: 72, y: 455, w: 936, h: 85 },
-    plate: { x: 72, y: 560, w: 936, h: 160 },
-    odds: { x: 72, y: 740, w: 936, h: 50 },
-    quote: { x: 72, y: 800, w: 716, h: 74 },
-    attribution: { x: 72, y: 876, w: 716, h: 24 },
-    footer: { x: 72, y: 880, w: 716, h: 88 },
+    frame: { x: 28, y: 28, w: 1024, h: 1024 },
+    headerRuleY: 164,
+    footerRuleY: 790,
+    header: { x: 96, y: 92, w: 420, h: 48 },
+    tag: { x: 616, y: 92, w: 368, h: 48 },
+    tier: { x: 120, y: 196, w: 840, h: 48 },
+    hero: { x: 120, y: 290, w: 840, h: 286 },
+    context: { x: 120, y: 600, w: 840, h: 52 },
+    fact: { x: 120, y: 692, w: 840, h: 52 },
+    dedication: { x: 96, y: 832, w: 640, h: 34 },
+    scan: { x: 96, y: 880, w: 640, h: 28 },
+    site: { x: 96, y: 918, w: 640, h: 30 },
+    fine: { x: 96, y: 968, w: 640, h: 28 },
+    cleanFooter: { x: 96, y: 832, w: 640, h: 164 },
     qr: { x: 836, y: 836, size: 172 },
-    tag: { x: 800, y: 72, w: 208, h: 58 },
-    scan: { x: 72, y: 912, w: 716, h: 26 },
-    site: { x: 72, y: 940, w: 716, h: 26 },
-    handle: { x: 72, y: 966, w: 300, h: 18 },
-    fine: { x: 72, y: 986, w: 716, h: 20 },
   },
   story: {
-    header: { x: 72, y: 240, w: 520, h: 58 },
-    pill: { x: 72, y: 330, w: 380, h: 52 },
-    headline: { x: 72, y: 410, w: 936, h: 270 },
-    subline: { x: 72, y: 700, w: 936, h: 100 },
-    plate: { x: 72, y: 840, w: 936, h: 260 },
-    odds: { x: 72, y: 1130, w: 936, h: 60 },
-    quote: { x: 72, y: 1220, w: 936, h: 80 },
-    attribution: { x: 72, y: 1302, w: 936, h: 26 },
-    footer: { x: 72, y: 1330, w: 936, h: 250 },
+    frame: { x: 28, y: 28, w: 1024, h: 1864 },
+    headerRuleY: 328,
+    footerRuleY: 1290,
+    header: { x: 96, y: 256, w: 420, h: 48 },
+    tag: { x: 616, y: 256, w: 368, h: 48 },
+    tier: { x: 120, y: 380, w: 840, h: 52 },
+    hero: { x: 120, y: 500, w: 840, h: 520 },
+    context: { x: 120, y: 1060, w: 840, h: 56 },
+    fact: { x: 120, y: 1160, w: 840, h: 56 },
+    dedication: { x: 320, y: 1327, w: 664, h: 36 },
+    scan: { x: 320, y: 1387, w: 664, h: 30 },
+    site: { x: 320, y: 1437, w: 664, h: 34 },
+    fine: { x: 320, y: 1499, w: 664, h: 40 },
+    cleanFooter: { x: 96, y: 1330, w: 280, h: 212 },
     qr: { x: 72, y: 1330, size: 220 },
-    tag: { x: 800, y: 240, w: 208, h: 58 },
-    scan: { x: 320, y: 1370, w: 688, h: 40 },
-    site: { x: 320, y: 1424, w: 688, h: 40 },
-    handle: { x: 320, y: 1474, w: 688, h: 30 },
-    fine: { x: 72, y: 1560, w: 936, h: 20 },
   },
   wide: {
-    header: { x: 72, y: 48, w: 360, h: 52 },
-    pill: { x: 72, y: 118, w: 300, h: 44 },
-    headline: { x: 72, y: 175, w: 688, h: 125 },
-    subline: { x: 72, y: 310, w: 688, h: 60 },
-    plate: { x: 72, y: 385, w: 688, h: 110 },
-    odds: { x: 72, y: 510, w: 688, h: 35 },
-    quote: { x: 72, y: 552, w: 688, h: 36 },
-    attribution: { x: 72, y: 590, w: 688, h: 16 },
-    footer: { x: 800, y: 360, w: 328, h: 140 },
+    frame: { x: 20, y: 20, w: 1160, h: 590 },
+    headerRuleY: 108,
+    footerRuleY: 474,
+    header: { x: 64, y: 48, w: 360, h: 36 },
+    tag: { x: 760, y: 48, w: 376, h: 36 },
+    tier: { x: 64, y: 124, w: 672, h: 34 },
+    hero: { x: 64, y: 180, w: 672, h: 168 },
+    context: { x: 64, y: 362, w: 672, h: 40 },
+    fact: { x: 64, y: 414, w: 672, h: 36 },
+    dedication: { x: 64, y: 488, w: 672, h: 26 },
+    scan: { x: 872, y: 356, w: 220, h: 26 },
+    site: { x: 64, y: 520, w: 672, h: 26 },
+    fine: { x: 64, y: 552, w: 672, h: 24 },
+    cleanFooter: { x: 64, y: 488, w: 672, h: 88 },
     qr: { x: 872, y: 120, size: 220 },
-    tag: { x: 800, y: 48, w: 328, h: 40 },
-    scan: { x: 800, y: 360, w: 328, h: 30 },
-    site: { x: 800, y: 394, w: 328, h: 30 },
-    handle: { x: 800, y: 428, w: 328, h: 26 },
-    fine: { x: 800, y: 462, w: 328, h: 30 },
   },
 };
 
-/** QR plate for a card's own style. The default collectible layout is fixed. */
+/** QR plate for a card's own style. Both styles use fixed archival plates. */
 export function qrPlateFor(format: WishFormat, style: WishCardInput["style"]): Plate {
   if (style === "clean" && format === "story") return { x: (1080 - 260) / 2, y: 1300, size: 260 };
   return LAYOUTS[format].qr;
@@ -118,29 +125,16 @@ export function layoutBoxes(format: WishFormat, input: WishCardInput): TextBox[]
   const boxes: TextBox[] = [
     { id: "header", ...L.header, minSize: 26 },
     { id: "tag", ...L.tag, minSize: 16 },
-    { id: "pill", ...L.pill, minSize: format === "wide" ? 16 : 20 },
-    { id: "headline", ...L.headline, minSize: format === "wide" ? 18 : 56 },
-    { id: "subline", ...L.subline, minSize: format === "wide" ? 18 : 24 },
-    { id: "odds", ...L.odds, minSize: format === "wide" ? 16 : 20 },
-    { id: "quote", ...L.quote, minSize: format === "wide" ? 18 : 22 },
-    { id: "attribution", ...L.attribution, minSize: 16 },
-    { id: "scan", ...L.scan, minSize: 16 },
-    { id: "site", ...L.site, minSize: format === "wide" ? 14 : 20 },
-    { id: "fine", ...L.fine, minSize: 14 },
+    { id: "tier", ...L.tier, minSize: format === "wide" ? 14 : 20 },
+    { id: "hero", ...L.hero, minSize: format === "wide" ? 24 : 56 },
+    { id: "context", ...L.context, minSize: 16 },
+    { id: "fact", ...L.fact, minSize: 18 },
+    { id: "scan", ...L.scan, minSize: 14 },
+    { id: "site", ...L.site, minSize: format === "wide" ? 14 : 18 },
+    { id: "fine", ...L.fine, minSize: 12 },
   ];
-  if (BRAND_HANDLE) boxes.push({ id: "handle", ...L.handle, minSize: 14 });
-  if (input.dedication) {
-    // An overlay on the hero plate, not a competing text region.
-    boxes.push({
-      id: "dedication",
-      x: L.plate.x + 24,
-      y: L.plate.y - 16,
-      w: Math.min(360, 44 + input.dedication.length * 15),
-      h: 32,
-      minSize: 18,
-      decorative: true,
-    });
-  }
+  if (BRAND_HANDLE) boxes.push({ id: "handle", ...L.site, minSize: 12 });
+  if (input.dedication) boxes.push({ id: "dedication", ...L.dedication, minSize: 16 });
   return boxes;
 }
 

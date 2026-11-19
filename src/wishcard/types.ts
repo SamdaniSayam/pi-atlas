@@ -73,14 +73,15 @@ export interface WishQuote {
 }
 
 export interface WishCopy {
-  /** Pill text (also used as the small dialog eyebrow). */
+  /** Tracked zone-2 label (also used as the small dialog eyebrow). */
   eyebrow: string;
   headline: string;
   subline: string;
   odds: string;
   thing: string;
   tierLabel: string;
-  collectorTag: string;
+  /** One understated line carrying the exact coordinate. */
+  factLine: string;
   dedicationPill: string;
   quote: WishQuote;
   finePrint: string;

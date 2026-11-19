@@ -25,14 +25,14 @@ export default function TourStage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = `Guided tour — π Atlas`;
+    document.title = `Guided tour · π Atlas`;
   }, []);
 
   if (pi.status === "error") {
     return <ErrorState message={pi.error ?? "Dataset failed to load."} onRetry={() => void pi.retry()} />;
   }
   if (pi.status !== "ready") {
-    return <LoadingState label="Preparing the tour — contacting the dataset service…" progress={pi.progress} />;
+    return <LoadingState label="Preparing the tour and loading the local dataset…" progress={pi.progress} />;
   }
 
   const Current = ACTS[act].Comp;

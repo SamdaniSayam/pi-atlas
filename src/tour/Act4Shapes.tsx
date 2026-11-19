@@ -53,7 +53,7 @@ export default function Act4Shapes() {
         <p className="m-0">
           Collapse each digit to black (0–4) or white (5–9) and π becomes a
           black-and-white canvas. Paint any shape and the atlas scans every valid
-          anchor — never across row boundaries. Here is the binary stream:
+          anchor. It never crosses row boundaries. Here is the binary stream:
         </p>
       </ActHeader>
 
@@ -103,12 +103,12 @@ export default function Act4Shapes() {
               <strong className="mono" style={{ color: result.total > 0 ? "var(--accent)" : "var(--error)" }}>
                 {result.first !== null ? `pos ${formatInt(result.first)}` : "not found"}
               </strong>{" "}
-              · {formatInt(result.total)} match{result.total === 1 ? "" : "es"} —{" "}
+              · {formatInt(result.total)} match{result.total === 1 ? "" : "es"}.{" "}
               {diff.label.toLowerCase()}: {formatOneIn(1 / expected)} per anchor under the model.
             </p>
           ) : failed ? (
             <p className="mb-0 mt-2 text-sm" style={{ color: "var(--error)" }} role="alert">
-              The search service is unreachable — try again in a moment.
+              Local search data is unavailable. Try again in a moment.
             </p>
           ) : (
             <p className="mb-0 mt-2 text-sm" style={{ color: "var(--text-2)" }}>Searching…</p>
@@ -119,8 +119,8 @@ export default function Act4Shapes() {
       <p className="mb-0 mt-5 text-sm" style={{ color: "var(--text-2)" }}>
         <strong style={{ color: "var(--text)" }}>The cliff edge:</strong> a 2-cell shape
         is everywhere; 6 constrained cells are already rare; 12 are practically
-        impossible inside a billion digits. The Probability Laboratory lets you feel
-        that cliff with your own pictures — try it after the tour.
+        impossible inside a billion digits. The Probability Laboratory lets you test
+        that cliff with your own pictures. Try it after the tour.
       </p>
     </div>
   );

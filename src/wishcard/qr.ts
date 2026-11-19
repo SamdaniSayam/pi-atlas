@@ -57,7 +57,7 @@ export function qrContentFor(input: WishCardInput): QrContent {
   return { text: explorerUrl(input.shareUrl), shortened: true };
 }
 
-/** White plate with a 4-module quiet zone, drawn with integer-size squares. */
+/** Sharp archival-ivory plate with a 4-module quiet zone and integer-size squares. */
 export function drawQr(
   ctx: CanvasRenderingContext2D,
   content: QrContent,
@@ -74,13 +74,10 @@ export function drawQr(
   const qrSize = count * module + quiet * 2;
   const left = x + (plateSize - qrSize) / 2;
   const top = y + (plateSize - qrSize) / 2;
-  const radius = Math.min(16, plateSize / 8);
 
   ctx.save();
-  ctx.beginPath();
-  ctx.roundRect(x, y, plateSize, plateSize, radius);
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fill();
+  ctx.fillStyle = "#F6F1E7";
+  ctx.fillRect(x, y, plateSize, plateSize);
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = "#0A0D12";
   const data = qr.modules.data;

@@ -64,14 +64,14 @@ export default function Explore() {
   const pi = usePiStore();
 
   useEffect(() => {
-    document.title = `${MODE_TITLES[mode]} — π Atlas`;
+    document.title = `${MODE_TITLES[mode]} · π Atlas`;
   }, [mode]);
 
   if (pi.status === "error") {
     return <ErrorState message={pi.error ?? "Dataset failed to load."} onRetry={() => void pi.retry()} />;
   }
   if (pi.status !== "ready") {
-    return <LoadingState label="Contacting the dataset service — verifying and loading the dataset…" progress={pi.progress} />;
+    return <LoadingState label="Verifying and loading the local dataset…" progress={pi.progress} />;
   }
   return <ExploreReady mode={mode} />;
 }
@@ -142,7 +142,7 @@ function ExploreReady({ mode }: { mode: SearchMode }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="sr-only">{`${MODE_TITLES[mode]} — π Atlas`}</h1>
+      <h1 className="sr-only">{`${MODE_TITLES[mode]} · π Atlas`}</h1>
       <ModeTabs mode={mode} />
       <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-4">
@@ -329,7 +329,7 @@ function DigitStage() {
             <ChevronLeft size={16} aria-hidden="true" />
           </button>
           <span className="text-sm mono" aria-live="polite" data-testid="occurrence-counter">
-            {result?.found ? `${formatInt(selected)} / ${formatInt(result.total)}` : "— / —"}
+            {result?.found ? `${formatInt(selected)} / ${formatInt(result.total)}` : "n/a"}
           </span>
           <button
             type="button"
@@ -379,7 +379,7 @@ function DigitsInspector() {
     return (
       <section className="panel p-4" aria-label="Results">
         <EmptyState title="Search the stream">
-          Enter digits on the left — try <span className="mono">12</span> for a quick
+          Enter digits on the left. Try <span className="mono">12</span> for a quick
           first find.
         </EmptyState>
       </section>
@@ -527,7 +527,7 @@ function DatesPanel() {
       </form>
       <SearchProgress progress={progress} />
       <p className="mb-0 mt-3 text-xs" style={{ color: "var(--text-2)" }}>
-        Every encoding is searched: DDMMYYYY, MMDDYYYY, YYYYMMDD, DDMMYY, MMDDYY, YYMMDD — duplicates removed.
+        Every encoding is searched: DDMMYYYY, MMDDYYYY, YYYYMMDD, DDMMYY, MMDDYY, YYMMDD. Duplicates removed.
       </p>
     </section>
   );
@@ -540,7 +540,7 @@ function DatesInspector() {
     return (
       <section className="panel p-4" aria-label="Results">
         <EmptyState title="Pick a date">
-          Try a birthday or an anniversary — six encodings are searched at once.
+          Try a birthday or an anniversary. Six encodings are searched at once.
         </EmptyState>
       </section>
     );
@@ -560,7 +560,7 @@ function DatesInspector() {
       type="button"
       className="chip !min-h-[36px]"
       onClick={() => openInDigits(row.sequence)}
-      title={`Open in Number Explorer — ${formatInt(row.result.total)} occurrence(s)`}
+      title={`Open in Number Explorer, ${formatInt(row.result.total)} occurrence(s)`}
     >
       pos {formatInt(row.result.positions[0])} · ×{formatInt(row.result.total)}
     </button>
@@ -744,7 +744,7 @@ function LettersStage() {
           <button type="button" className="btn btn-ghost !min-h-[44px]" disabled={!frame || selected <= 1} onClick={() => setSelected(selected - 1)} aria-label="Previous match">
             <ChevronLeft size={16} aria-hidden="true" />
           </button>
-          <span className="mono text-sm">{frame ? `${formatInt(selected)} / ${formatInt(frame.total)}` : "— / —"}</span>
+          <span className="mono text-sm">{frame ? `${formatInt(selected)} / ${formatInt(frame.total)}` : "n/a"}</span>
           <button type="button" className="btn btn-ghost !min-h-[44px]" disabled={!frame || selected >= frame.total} onClick={() => setSelected(selected + 1)} aria-label="Next match">
             <ChevronRight size={16} aria-hidden="true" />
           </button>
@@ -803,7 +803,7 @@ function LettersInspector() {
         <strong style={{ color: "var(--text)" }}>Why some letters are rarer:</strong> pairs reduce
         mod 26, so A–V are hit by 4 pair-values (p = 0.04) while W–Z are hit by only 3
         (p = 0.03). Expected odds above use the per-letter probabilities of your actual
-        word — not an equal-letter assumption.
+        word, not an equal-letter assumption.
       </section>
       <WishCard
         mode="letters"
@@ -895,7 +895,7 @@ function PatternPanel({ colourMode, params }: { colourMode: boolean; params: URL
           setSearching(false);
           setPatternSearching(false);
           setProgress(null);
-          toast("The pattern search hit its time limit and stopped early — results would be incomplete.");
+          toast("The pattern search hit its time limit and stopped early. Results would be incomplete.");
           return;
         }
         if (settled.status === "failed" || !settled.result) {
@@ -1113,7 +1113,7 @@ function PatternStage({ colourMode, mode }: { colourMode: boolean; mode: SearchM
             <ChevronLeft size={16} aria-hidden="true" />
           </button>
           <span className="mono text-sm" aria-live="polite">
-            {store.total > 0 ? `${formatInt(store.selected + 1)} / ${formatInt(store.total)}` : "— / —"}
+            {store.total > 0 ? `${formatInt(store.selected + 1)} / ${formatInt(store.total)}` : "n/a"}
           </span>
           <button
             type="button"
@@ -1187,7 +1187,7 @@ function PatternInspector({ mode }: { mode: SearchMode }) {
       <section className="panel p-4" aria-label="Results">
         <EmptyState title="Paint and search">
           Draw a pattern on the left and press <strong>Search pattern</strong>. The
-          worker scans all valid anchors — never across row boundaries.
+          worker scans all valid anchors. It never crosses row boundaries.
         </EmptyState>
       </section>
     );
@@ -1229,7 +1229,7 @@ function PatternInspector({ mode }: { mode: SearchMode }) {
       <section className="panel-2 p-4 text-xs" style={{ color: "var(--text-2)" }}>
         Matches never wrap across row boundaries: every pattern row is anchored inside
         a single row of the field. The probability model treats digits as independent
-        and uniform — an approximation, not a proven property of π.
+        and uniform. That is an approximation, not a proven property of π.
       </section>
       <WishCard
         mode={mode === "colors" ? "pixels" : "shapes"}

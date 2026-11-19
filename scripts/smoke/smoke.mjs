@@ -320,6 +320,9 @@ async function main() {
     await banner.waitFor({ state: "detached", timeout: 10_000 });
     assert.ok(!new URL(p.url()).hash.includes("src"), "src=card was not removed");
     await p.locator("#digits-q").waitFor({ state: "visible", timeout: 10_000 });
+    // SharedBanner focuses on the next macrotask so React can finish the
+    // navigation; wait for it instead of racing the timer.
+    await p.waitForFunction(() => document.activeElement?.id === "digits-q", undefined, { timeout: 5_000 });
     assert.equal(await p.evaluate(() => document.activeElement?.id), "digits-q", "input is not focused");
     assert.equal(await p.locator("#digits-q").inputValue(), "", "input is not empty");
     return "banner shown, dismissed, input focused and empty";

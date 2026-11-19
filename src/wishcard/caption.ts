@@ -47,16 +47,16 @@ export function buildCaption(input: WishCardInput, shareUrl = input.shareUrl): s
   let body: string;
   switch (input.tier) {
     case "gold":
-      body = `Legendary find! ${display} is in π at position ${p}. Only a 1 in ${n} chance in ${D}.`;
+      body = `Legendary find. ${display} is in π at position ${p}. A 1 in ${n} chance in ${D}.`;
       break;
     case "silver":
-      body = `Rare find! ${display} is in π at position ${p}.`;
+      body = `Rare find. ${display} is in π at position ${p}.`;
       break;
     case "aurora":
-      body = `I found ${display} in π at position ${p}!`;
+      body = `Found ${display} in π at position ${p}.`;
       break;
     case "twilight":
-      body = `${display} wasn’t in the first ${D} of π. Still special.`;
+      body = `${display} was not in the first ${D} of π.`;
       break;
   }
   const dedication = input.dedication ? ` For ${input.dedication}.` : "";

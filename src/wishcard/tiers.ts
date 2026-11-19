@@ -13,13 +13,27 @@ export const TIER_LABELS: Record<WishTier, string> = {
   twilight: "Twilight",
 };
 
-/** Uppercase pill text; twilight has a near-miss variant. */
-export function tierPill(input: Pick<WishCardInput, "tier" | "query" | "longestPrefix">): string {
-  if (input.tier === "gold") return "LEGENDARY FIND";
-  if (input.tier === "silver") return "RARE FIND";
+/**
+ * Exact, grouped 1-in-N value for the zone-2 tier label. The longer odds copy
+ * uses `oneIn`, which describes large numbers in words.
+ */
+export function oneInExact(expected: number): string {
+  const safe = Number.isFinite(expected) && expected > 0 ? expected : 1;
+  const probability = 1 - Math.exp(-safe);
+  return Math.round(1 / probability).toLocaleString("en-US");
+}
+
+/** Tracked-out zone-2 label, with no pill and no decorative separator. */
+export function tierLabel(input: Pick<WishCardInput, "tier" | "expected">): string {
+  if (input.tier === "gold") return `LEGENDARY · 1 IN ${oneInExact(input.expected)}`;
+  if (input.tier === "silver") return `RARE · 1 IN ${oneInExact(input.expected)}`;
   if (input.tier === "aurora") return "LUCKY FIND";
-  const prefix = input.longestPrefix?.prefix.length ?? 0;
-  return prefix >= input.query.length - 1 ? "SO CLOSE" : "BEYOND THE HORIZON";
+  return "UNCHARTED";
+}
+
+/** Kept as the public alias of the zone-2 label. */
+export function tierPill(input: Pick<WishCardInput, "tier" | "expected">): string {
+  return tierLabel(input);
 }
 
 /**
