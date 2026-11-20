@@ -20,6 +20,9 @@ import sys
 
 from mpmath import mp
 
+if sys.flags.optimize:
+    raise SystemExit("FAIL: this verifier depends on assertions; do not run with python -O")
+
 N = 2_000_000
 
 FIRST_100 = (

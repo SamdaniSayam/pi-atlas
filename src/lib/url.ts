@@ -1,5 +1,6 @@
 /** URL state helpers (§33). URL is the source of truth for search configuration. */
 import type { SearchMode } from "../state/useHistory";
+import { CANONICAL_SITE_URL } from "./socialMetadata";
 import {
   DEFAULT_PIXEL_WIDTH,
   MIN_PIXEL_WIDTH,
@@ -34,11 +35,11 @@ export function parseExploreParams(search: URLSearchParams): ExploreUrlState {
     ? (rawMode as SearchMode)
     : "digits";
   const query = (search.get("q") ?? "").slice(0, 100);
-  const occurrence = clampInt(search.get("occ"), 1, 1_000_000, 1);
+  const occurrence = clampInt(search.get("occ"), 1, 1_000_000, 1) ?? 1;
   const frame = search.get("frame") === "B" ? "B" : "A";
   const pattern = parsePattern(search.get("p"));
-  const patternRows = clampInt(search.get("pr"), 1, MAX_PATTERN_ROWS, 1);
-  const patternCols = clampInt(search.get("pc"), 1, MAX_PATTERN_COLS, 1);
+  const patternRows = clampInt(search.get("pr"), 1, MAX_PATTERN_ROWS, 1) ?? 1;
+  const patternCols = clampInt(search.get("pc"), 1, MAX_PATTERN_COLS, 1) ?? 1;
   const exact = search.get("exact") !== "0";
   const fieldWidth = clampFieldWidth(search.get("w"));
   const colours = clampInt(search.get("c"), 2, 256, undefined);
@@ -84,10 +85,12 @@ function clampInt(
   min: number,
   max: number,
   fallback: number | undefined,
-): number {
-  if (raw === null) return fallback ?? min;
+): number | undefined {
+  // Absent optional parameters must stay absent: coercing them to `min` turns
+  // `?q=12` into a state with colours=2/oddsW=1/oddsH=1 and pollutes share URLs.
+  if (raw === null) return fallback;
   const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n)) return fallback ?? min;
+  if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
 }
 
@@ -111,6 +114,12 @@ export function serializeExplore(state: Partial<ExploreUrlState>): string {
 
 /** Build a shareable absolute URL for a search state. */
 export function buildShareUrl(pathname: string, state: Partial<ExploreUrlState>): string {
-  const base = window.location.origin + window.location.pathname;
-  return `${base}#${pathname}${serializeExplore(state)}`;
+  // Never emit a non-HTTP(S) or `null` origin (file://, data:, extension pages):
+  // those links cannot be opened by a QR scan or another device.
+  const loc = typeof window !== "undefined" ? window.location : null;
+  const httpOrigin =
+    loc && (loc.protocol === "https:" || loc.protocol === "http:")
+      ? loc.origin + loc.pathname
+      : CANONICAL_SITE_URL;
+  return `${httpOrigin}#${pathname}${serializeExplore(state)}`;
 }

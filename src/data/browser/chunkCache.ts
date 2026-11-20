@@ -105,16 +105,24 @@ export async function writeCachedChunk(
     // Copy into a standalone ArrayBuffer: the source may be a WASM/fetch view.
     const copy = new Uint8Array(bytes.length);
     copy.set(bytes);
-    // Read the byte counter in its OWN transaction. Awaiting inside a readwrite
-    // transaction lets IDB auto-close it before the put — a classic IDB bug.
-    const current = await new Promise<number>((resolve) => {
-      const r = db.transaction(META_STORE, "readonly").objectStore(META_STORE).get("cachedBytes");
-      r.onsuccess = () => resolve(typeof r.result === "number" ? r.result : 0);
-      r.onerror = () => resolve(0);
-    });
+    const key = keyOf(datasetId, index);
+    // One atomic transaction: reading the old size and byte counter in the
+    // same readwrite transaction prevents the lost-update race that occurred
+    // with 8 chunks writing concurrently (each read the same stale counter).
     const tx = db.transaction([STORE, META_STORE], "readwrite");
-    tx.objectStore(STORE).put(copy.buffer, keyOf(datasetId, index));
-    tx.objectStore(META_STORE).put(current + copy.length, "cachedBytes");
+    const store = tx.objectStore(STORE);
+    const meta = tx.objectStore(META_STORE);
+    const existing = store.get(key);
+    existing.onsuccess = () => {
+      const previous =
+        existing.result instanceof ArrayBuffer ? existing.result.byteLength : 0;
+      store.put(copy.buffer, key);
+      const counter = meta.get("cachedBytes");
+      counter.onsuccess = () => {
+        const current = typeof counter.result === "number" ? counter.result : 0;
+        meta.put(Math.max(0, current + copy.length - previous), "cachedBytes");
+      };
+    };
     await txDone(tx);
   } catch {
     // Storage is optional — ignore.
@@ -129,21 +137,20 @@ export async function deleteCachedChunk(datasetId: string, index: number): Promi
   if (!db) return;
   try {
     const key = keyOf(datasetId, index);
-    // Read size/counter in their own transactions: awaiting inside a readwrite
-    // transaction lets IndexedDB auto-close it before the delete.
-    const removed = await new Promise<number>((resolve) => {
-      const r = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
-      r.onsuccess = () => resolve(r.result instanceof ArrayBuffer ? r.result.byteLength : 0);
-      r.onerror = () => resolve(0);
-    });
-    const current = await new Promise<number>((resolve) => {
-      const r = db.transaction(META_STORE, "readonly").objectStore(META_STORE).get("cachedBytes");
-      r.onsuccess = () => resolve(typeof r.result === "number" ? r.result : 0);
-      r.onerror = () => resolve(0);
-    });
     const tx = db.transaction([STORE, META_STORE], "readwrite");
-    tx.objectStore(STORE).delete(key);
-    tx.objectStore(META_STORE).put(Math.max(0, current - removed), "cachedBytes");
+    const store = tx.objectStore(STORE);
+    const meta = tx.objectStore(META_STORE);
+    const existing = store.get(key);
+    existing.onsuccess = () => {
+      const removed = existing.result instanceof ArrayBuffer ? existing.result.byteLength : 0;
+      store.delete(key);
+      if (removed === 0) return;
+      const counter = meta.get("cachedBytes");
+      counter.onsuccess = () => {
+        const current = typeof counter.result === "number" ? counter.result : 0;
+        meta.put(Math.max(0, current - removed), "cachedBytes");
+      };
+    };
     await txDone(tx);
   } catch {
     // ignore
@@ -157,12 +164,26 @@ export async function clearChunkCache(datasetId?: string): Promise<void> {
   const db = await openDb();
   if (!db) return;
   try {
-    const stores = [STORE, ...(datasetId ? [] : [META_STORE])];
+    const stores = [STORE, META_STORE];
     const tx = db.transaction(stores, "readwrite");
+    let totalBytes = 0;
     if (datasetId) {
       const store = tx.objectStore(STORE);
+      const meta = tx.objectStore(META_STORE);
       const range = IDBKeyRange.bound(`${datasetId}:`, `${datasetId}:\uffff`);
       store.delete(range);
+      // Recompute the global byte counter after removing this dataset; a raw
+      // subtraction would double-count when other datasets remain cached.
+      const cursorReq = store.openCursor();
+      cursorReq.onsuccess = () => {
+        const cursor = cursorReq.result;
+        if (!cursor) {
+          meta.put(0, "cachedBytes");
+          return;
+        }
+        totalBytes += cursor.value instanceof ArrayBuffer ? cursor.value.byteLength : 0;
+        cursor.continue();
+      };
     } else {
       tx.objectStore(STORE).clear();
       tx.objectStore(META_STORE).clear();

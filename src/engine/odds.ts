@@ -46,13 +46,23 @@ export function compareToDataset(
   datasetSize = 2_000_000,
   cols = odds.width,
 ): DatasetComparison {
-  const anchors = Math.max(1, (datasetSize / cols) * (cols - odds.width + 1) * 1);
-  // Valid horizontal anchors per row ≈ (cols - width + 1); rows ≈ dataset / cols.
-  const validAnchors = Math.max(1, (datasetSize / cols) * Math.max(1, cols - odds.width + 1));
-  const log10Anchors = Math.log10(validAnchors);
+  // An image of `width × height` can only anchor where all of its rows and
+  // columns fit inside the folded field. Honour the height: ignoring it made
+  // tall images look just as findable as wide ones.
+  const safeCols = Math.max(1, Math.trunc(cols));
+  const width = Math.max(0, Math.trunc(odds.width));
+  const height = Math.max(0, Math.trunc(odds.height));
+  const rows = Math.floor(Math.max(0, datasetSize) / safeCols);
+  const vertical = Math.max(0, rows - height + 1);
+  const horizontal = Math.max(0, safeCols - width + 1);
+  const validAnchors = vertical * horizontal;
+  const log10Anchors =
+    validAnchors > 0 ? Math.log10(validAnchors) : Number.NEGATIVE_INFINITY;
   const log10Expected = log10Anchors - odds.log10Space;
   let verdict: string;
-  if (log10Expected >= 0.3) {
+  if (!Number.isFinite(log10Expected)) {
+    verdict = "This image cannot fit inside the dataset's folded rows.";
+  } else if (log10Expected >= 0.3) {
     verdict = "Expected to appear many times in the dataset.";
   } else if (log10Expected >= -0.3) {
     verdict = "Right at the edge of what the dataset can hold. A match would be a coin flip.";
@@ -61,7 +71,6 @@ export function compareToDataset(
   } else {
     verdict = "Astronomically beyond the dataset. Do not expect to find this.";
   }
-  void anchors;
   return {
     log10Anchors,
     log10ExpectedMatches: log10Expected,
@@ -89,8 +98,8 @@ export interface MagnitudeAnchor {
 export const MAGNITUDE_ANCHORS: MagnitudeAnchor[] = [
   { label: "Seconds in a day", log10: Math.log10(86_400), approximate: false },
   { label: "Grains of sand on Earth", log10: 19, approximate: true },
-  { label: "Stars in the observable universe", log10: 22, approximate: true },
   { label: "Atoms in a grain of sand", log10: 19, approximate: true },
+  { label: "Stars in the observable universe", log10: 22, approximate: true },
   { label: "Atoms in the observable universe", log10: 80, approximate: true },
   { label: "A Googol", log10: 100, approximate: false },
 ];

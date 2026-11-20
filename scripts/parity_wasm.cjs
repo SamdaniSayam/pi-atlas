@@ -23,6 +23,7 @@
 "use strict";
 
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const assert = require("node:assert/strict");
 const { isDeepStrictEqual } = require("node:util");
@@ -193,8 +194,12 @@ function main() {
     checks += 1;
   };
 
-  const stageFile = "/tmp/opencode/parity-stages.log";
-  try { fs.writeFileSync(stageFile, ""); } catch {}
+  const stageFile = process.env.PI_PARITY_STAGE_FILE ||
+    path.join(os.tmpdir(), "pi-atlas-parity-stages.log");
+  try {
+    fs.mkdirSync(path.dirname(stageFile), { recursive: true });
+    fs.writeFileSync(stageFile, "");
+  } catch {}
   const stage = (s) => {
     try { fs.appendFileSync(stageFile, `${s}\n`); } catch {}
   };

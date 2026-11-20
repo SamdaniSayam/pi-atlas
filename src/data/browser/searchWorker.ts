@@ -44,6 +44,8 @@ let loader: ChunkLoader | null = null;
 let residency: WasmChunkResidency | null = null;
 /** Job ids explicitly cancelled by the main thread. */
 const cancelled = new Set<number>();
+/** Chunk indices each active job depends on (per-job download cancellation). */
+const jobChunks = new Map<number, Set<number>>();
 /** Currently executing job (one heavy search at a time). */
 let activeJob: number | null = null;
 /** Only these kinds are "heavy" — light window/sample reads must not cancel a search. */
@@ -83,6 +85,12 @@ function throwIfCancelled(id: number): void {
  */
 async function ensureChunks(indices: number[], id: number): Promise<void> {
   if (!engine || !loader || !manifest) throw new Error("worker not initialised");
+  let neededByJob = jobChunks.get(id);
+  if (!neededByJob) {
+    neededByJob = new Set<number>();
+    jobChunks.set(id, neededByJob);
+  }
+  for (const index of indices) neededByJob.add(index);
   residency?.beginJob(id, indices);
   const total = manifest.totalDigits;
   // Only missing chunks need work. Chunks already resident in WASM are reused
@@ -172,6 +180,19 @@ async function runPattern(id: number, payload: unknown): Promise<unknown> {
     field_cols: number;
     match_cap?: number;
   };
+  if (
+    !Number.isInteger(spec.rows) ||
+    !Number.isInteger(spec.cols) ||
+    !Number.isInteger(spec.field_cols) ||
+    spec.rows < 1 ||
+    spec.cols < 1 ||
+    spec.field_cols < 1 ||
+    spec.cols > spec.field_cols ||
+    !Array.isArray(spec.cells) ||
+    spec.cells.length !== spec.rows * spec.cols
+  ) {
+    throw new Error("invalid pattern dimensions");
+  }
   const valueCap = spec.colour_mode ? 9 : 1;
   let constrained = 0;
   for (const v of spec.cells) {
@@ -205,9 +226,24 @@ async function runStats(id: number): Promise<unknown> {
 async function runWindow(id: number, payload: unknown): Promise<unknown> {
   if (!engine || !manifest) throw new Error("worker not initialised");
   const { start, end } = payload as { start: number; end: number };
-  await ensureChunks(chunksForRange(manifest, start, end), id);
+  const total = manifest.totalDigits;
+  const rawStart = Math.trunc(start);
+  const rawEnd = Math.trunc(end);
+  if (!Number.isFinite(rawStart) || !Number.isFinite(rawEnd)) {
+    throw new Error("window bounds must be finite");
+  }
+  if (rawStart > total || rawEnd < 1) {
+    return { first_position: Math.max(1, rawStart), digits: "" };
+  }
+  const safeStart = Math.max(1, Math.min(total, rawStart));
+  const safeEnd = Math.max(1, Math.min(total, rawEnd));
+  if (safeEnd < safeStart) return { first_position: safeStart, digits: "" };
+  await ensureChunks(chunksForRange(manifest, safeStart, safeEnd), id);
   throwIfCancelled(id);
-  return { first_position: start, digits: engine.get_window(BigInt(start), BigInt(end)) };
+  return {
+    first_position: safeStart,
+    digits: engine.get_window(BigInt(safeStart), BigInt(safeEnd)),
+  };
 }
 
 async function runSamples(id: number, payload: unknown): Promise<unknown> {
@@ -240,9 +276,27 @@ const handlers: Record<string, (id: number, payload: unknown) => Promise<unknown
   samples: runSamples,
 };
 
+/** Cancel one job, aborting only downloads no other active job still needs. */
+function cancelJob(id: number): void {
+  cancelled.add(id);
+  const indices = jobChunks.get(id);
+  if (!indices || !loader) return;
+  for (const index of indices) {
+    let shared = false;
+    for (const [otherId, otherIndices] of jobChunks) {
+      if (otherId !== id && otherIndices.has(index)) {
+        shared = true;
+        break;
+      }
+    }
+    if (!shared) loader.cancel(index);
+  }
+}
+
 async function runJob(id: number, kind: string, payload: unknown, requestId?: number): Promise<void> {
   if (HEAVY_KINDS.has(kind)) activeJob = id;
   try {
+    throwIfCancelled(id);
     const handler = handlers[kind];
     if (!handler) throw new Error(`unknown job kind: ${kind}`);
     const result = await handler(id, payload);
@@ -260,6 +314,7 @@ async function runJob(id: number, kind: string, payload: unknown, requestId?: nu
     post({ type: "error", id, requestId, error: message });
   } finally {
     cancelled.delete(id);
+    jobChunks.delete(id);
     // The scan is over: release WASM copies of chunks that fell out of the JS
     // LRU. Full scans keep every chunk until this point for require_all().
     residency?.endJob(id);
@@ -310,14 +365,13 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         // One heavy search per tab: cancel any previous heavy job before a new
         // one starts. Light window/sample reads run concurrently.
         if (HEAVY_KINDS.has(msg.kind) && activeJob !== null && activeJob !== msg.id) {
-          cancelled.add(activeJob);
+          cancelJob(activeJob);
         }
         void runJob(msg.id, msg.kind, msg.payload, msg.requestId);
         break;
       }
       case "cancel": {
-        cancelled.add(msg.id);
-        loader?.cancelAll();
+        cancelJob(msg.id);
         break;
       }
       case "clearCache": {

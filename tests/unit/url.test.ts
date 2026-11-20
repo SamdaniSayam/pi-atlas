@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   parseExploreParams,
   serializeExplore,
@@ -79,10 +79,39 @@ describe("clampFieldWidth", () => {
   });
 });
 
+describe("optional odds parameters", () => {
+  it("stay absent when not supplied (no accidental URL pollution)", () => {
+    const s = parseExploreParams(new URLSearchParams("q=12"));
+    expect(s.colours).toBeUndefined();
+    expect(s.oddsW).toBeUndefined();
+    expect(s.oddsH).toBeUndefined();
+    expect(serializeExplore(s)).toBe("?q=12");
+  });
+
+  it("clamp supplied values into range", () => {
+    const s = parseExploreParams(new URLSearchParams("c=9999&ow=-3&oh=abc"));
+    expect(s.colours).toBe(256);
+    expect(s.oddsW).toBe(1);
+    expect(s.oddsH).toBeUndefined();
+  });
+});
+
 describe("buildShareUrl", () => {
   it("builds a hash URL preserving state", () => {
     const url = buildShareUrl("/explore/digits", { mode: "digits", query: "314159" });
     expect(url).toContain("#/explore/digits?q=314159");
     expect(url.startsWith(window.location.origin)).toBe(true);
+  });
+
+  it("falls back to the canonical HTTPS site on a non-HTTP origin", () => {
+    vi.stubGlobal("window", {
+      location: { protocol: "file:", origin: "null", pathname: "/index.html" },
+    });
+    try {
+      const url = buildShareUrl("/explore/digits", { query: "12" });
+      expect(url).toBe("https://samdanisayam.github.io/pi-atlas/#/explore/digits?q=12");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -8,25 +8,66 @@ import { absoluteSocialImage, normalizeSiteRoot } from "./src/lib/socialMetadata
  * when VITE_SITE_URL is unset in local/CI builds.
  */
 function absoluteSocialImages(): Plugin {
-  const imageUrl = absoluteSocialImage(normalizeSiteRoot(process.env.VITE_SITE_URL));
-  const replaceContent = (html: string, attribute: string, name: string): string => {
+  const siteRoot = normalizeSiteRoot(process.env.VITE_SITE_URL);
+  const imageUrl = absoluteSocialImage(siteRoot);
+  const replaceContent = (html: string, attribute: string, name: string, value: string): string => {
     const pattern = new RegExp(`(<meta\\s+${attribute}="${name}"\\s+content=")[^"]*(")`);
-    return html.replace(pattern, `$1${imageUrl}$2`);
+    return html.replace(pattern, `$1${value}$2`);
   };
   return {
     name: "absolute-social-images",
     transformIndexHtml(html) {
       return replaceContent(
-        replaceContent(html, "property", "og:image"),
-        "name",
-        "twitter:image",
+        replaceContent(
+          replaceContent(html, "property", "og:image", imageUrl),
+          "name",
+          "twitter:image",
+          imageUrl,
+        ),
+        "property",
+        "og:url",
+        siteRoot,
       );
     },
   };
 }
 
+/**
+ * Static-hosting CSP. GitHub Pages cannot send response headers, so the policy
+ * is injected at build time (dev keeps Vite's inline React-refresh preamble).
+ * `wasm-unsafe-eval` is required to instantiate the search engine.
+ */
+function contentSecurityPolicy(): Plugin {
+  const policy = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "form-action 'none'",
+  ].join("; ");
+  return {
+    name: "content-security-policy",
+    apply: "build",
+    transformIndexHtml() {
+      return [
+        {
+          tag: "meta",
+          attrs: { "http-equiv": "Content-Security-Policy", content: policy },
+          injectTo: "head-prepend" as const,
+        },
+      ];
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), absoluteSocialImages()],
+  plugins: [react(), absoluteSocialImages(), contentSecurityPolicy()],
   // GitHub Pages serves the site from https://<user>.github.io/<repo>/, so the
   // production build must use relative asset URLs. Override when hosting at a
   // domain root, e.g. VITE_BASE_PATH=/ in CI. Local dev is unaffected.

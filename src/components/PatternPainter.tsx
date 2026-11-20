@@ -3,10 +3,10 @@
  * Supports pointer drag painting, keyboard painting, presets, wildcards
  * (colour mode), and difficulty estimation.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Undo2 } from "lucide-react";
 import { PALETTE } from "../engine/palette";
-import { useSettings } from "../state/useSettings";
+import { useResolvedTheme } from "../state/useSettings";
 import { announce } from "../lib/announce";
 
 export interface PainterPreset {
@@ -113,15 +113,28 @@ export default function PatternPainter(props: PatternPainterProps) {
     disabled,
   } = props;
 
-  const theme = useSettings((s) => s.theme);
-  const light = theme === "light";
+  const light = useResolvedTheme() === "light";
   const [cursor, setCursor] = useState<{ r: number; c: number }>({ r: 0, c: 0 });
-  const [paintValue, setPaintValue] = useState<number>(colourMode ? 1 : 1);
+  const [paintValue, setPaintValue] = useState<number>(1);
   const [past, setPast] = useState<number[][]>([]);
   const paintingRef = useRef<number | null>(null);
   const constrained = cells.filter((v) => v !== -1).length;
   const tooFew = constrained < minCells;
   const tooMany = constrained > maxCells;
+
+  // A pointer released outside the grid must end the drag; otherwise hovering
+  // back over cells would keep painting with no button held.
+  useEffect(() => {
+    const stop = () => {
+      paintingRef.current = null;
+    };
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    return () => {
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+  }, []);
 
   const setCell = (r: number, c: number, value: number) => {
     const next = [...cells];
@@ -282,7 +295,11 @@ export default function PatternPainter(props: PatternPainterProps) {
                     fontWeight: 700,
                   }}
                   onPointerDown={(e) => { e.preventDefault(); handlePointerCell(r, c, true); }}
-                  onPointerEnter={() => { if (paintingRef.current !== null && !(paintingRef.current === undefined)) handlePointerCell(r, c, false); }}
+                  onPointerEnter={(e) => {
+                    if (e.buttons === 1 && paintingRef.current !== null) {
+                      handlePointerCell(r, c, false);
+                    }
+                  }}
                   onPointerUp={() => { paintingRef.current = null; }}
                   disabled={disabled}
                 >

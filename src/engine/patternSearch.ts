@@ -88,13 +88,22 @@ export function searchPattern(
   spec: PatternSpec,
   opts: PatternSearchOptions,
 ): PatternSearchResult {
-  const { fieldCols: cols, matchCap } = opts;
-  const chunkRows = opts.chunkRows ?? 2048;
-  const pRows = spec.rows;
-  const pCols = spec.cols;
+  const { fieldCols: cols } = opts;
+  const chunkRows = Math.max(1, Math.trunc(opts.chunkRows ?? 2048));
+  const matchCap = Math.max(0, Math.trunc(opts.matchCap));
+  const pRows = Math.trunc(spec.rows);
+  const pCols = Math.trunc(spec.cols);
   const base = spec.colourMode ? 10 : 2;
 
+  if (cols <= 0 || pRows <= 0 || pCols <= 0 || pCols > cols) {
+    return { matches: [], total: 0, capped: false, anchors: 0, cancelled: false };
+  }
+
   const totalRows = Math.floor(digits.length / cols);
+  // The pattern needs pRows complete rows below the anchor. Anchoring on the
+  // last partial row would read past the end of the dataset (NaN on the
+  // last row, out-of-range char codes beyond it).
+  const lastRow = totalRows - pRows;
   const matches: PatternMatch[] = [];
   let total = 0;
   let capped = false;
@@ -113,8 +122,8 @@ export function searchPattern(
 
   let cancelled = false;
   let row = 0;
-  while (row < totalRows && !cancelled) {
-    const endRow = Math.min(totalRows, row + chunkRows);
+  while (row <= lastRow && !cancelled) {
+    const endRow = Math.min(lastRow + 1, row + chunkRows);
     for (; row < endRow; row += 1) {
       const rowStart = row * cols;
       const maxCol = cols - pCols;

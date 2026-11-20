@@ -17,6 +17,9 @@ import sys
 
 from mpmath import mp
 
+if sys.flags.optimize:
+    raise SystemExit("FAIL: this generator depends on assertions; do not run with python -O")
+
 N = 2_000_000
 GUARD = 500  # extra correct digits demanded beyond N
 

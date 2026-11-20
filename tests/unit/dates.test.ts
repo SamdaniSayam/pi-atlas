@@ -60,4 +60,22 @@ describe("date encodings", () => {
     const seqs = rows.map((r) => r.sequence);
     expect(new Set(seqs).size).toBe(seqs.length);
   });
+
+  it("zero-pads years shorter than four digits", () => {
+    expect(DATE_FORMATS[0].encode(7, 1, 2)).toBe("02010007");
+    expect(DATE_FORMATS[2].encode(7, 1, 2)).toBe("00070102");
+    expect(DATE_FORMATS[3].encode(7, 1, 2)).toBe("020107");
+    for (const f of DATE_FORMATS) expect(f.encode(7, 1, 2)).toMatch(/^\d+$/);
+  });
+
+  it("orders found formats by first position with a stable tie-break", () => {
+    const hay = "111111" + "0000" + "20111111";
+    const { rows } = searchDate(hay, 2011, 11, 11);
+    // Found encodings come first, sorted by first position; the absent one
+    // remains in the list so the UI can show every format that was checked.
+    expect(rows.map((r) => r.sequence)).toEqual(["111111", "20111111", "11112011"]);
+    expect(rows[0].result.positions[0]).toBe(1);
+    expect(rows[1].result.positions[0]).toBe(11);
+    expect(rows[2].result.found).toBe(false);
+  });
 });

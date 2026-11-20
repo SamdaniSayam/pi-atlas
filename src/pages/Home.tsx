@@ -8,7 +8,7 @@ import { useDigitWindow } from "../data/digitWindow";
 import { APP_NAME, CHI_SQUARE_95_DF9 } from "../constants";
 import { formatInt, formatMagnitude } from "../engine/format";
 import { colourFor } from "../engine/palette";
-import { useSettings } from "../state/useSettings";
+import { useResolvedTheme } from "../state/useSettings";
 import { computeOdds } from "../engine/odds";
 import SearchInput from "../components/SearchInput";
 
@@ -224,8 +224,7 @@ const EXPLORERS = [
 ];
 
 function ExplorerCards() {
-  const theme = useSettings((s) => s.theme);
-  const light = theme === "light";
+  const light = useResolvedTheme() === "light";
   return (
     <section aria-label="Four explorers" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {EXPLORERS.map(({ to, Icon, title, text }) => (

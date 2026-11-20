@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { colourFor, PALETTE, SHAPE_INK } from "../engine/palette";
 import { formatInt } from "../engine/format";
-import { useSettings } from "../state/useSettings";
+import { useSettings, useResolvedTheme } from "../state/useSettings";
 import { getCachedRange, prefetchRange, subscribeDigitWindows } from "../data/digitWindow";
 
 export interface FieldHighlight {
@@ -47,7 +47,7 @@ export default function PixelField({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cellSize = useSettings((s) => s.cellSize);
-  const theme = useSettings((s) => s.theme);
+  const theme = useResolvedTheme();
   const [version, force] = useReducer((x: number) => x + 1, 0);
 
   const totalRows = Math.floor(totalDigits / fieldCols);
@@ -86,8 +86,12 @@ export default function PixelField({
     const scrollH = scroll.clientHeight;
     const scrollW = scroll.clientWidth;
 
-    const firstRow = Math.max(windowStartRow, Math.floor(scrollTop / cellSize) - 1);
-    const lastRow = Math.min(windowStartRow + windowRows, Math.ceil((scrollTop + scrollH) / cellSize) + 1);
+    const firstVisible = windowStartRow + Math.floor(scrollTop / cellSize) - 1;
+    const firstRow = Math.max(windowStartRow, firstVisible);
+    const lastRow = Math.min(
+      windowStartRow + windowRows,
+      windowStartRow + Math.ceil((scrollTop + scrollH) / cellSize) + 1,
+    );
     const firstCol = Math.max(0, Math.floor(scroll.scrollLeft / cellSize) - 1);
     const lastCol = Math.min(fieldCols, Math.ceil((scroll.scrollLeft + scrollW) / cellSize) + 1);
 
@@ -114,7 +118,10 @@ export default function PixelField({
           const d = Number(digits[rowOffset + c]);
           if (Number.isNaN(d)) continue;
           const x = c * cellSize;
-          const y = r * cellSize - scrollTop;
+          // The canvas is sticky at the viewport top; its y=0 is the window's
+          // first row, not row 0 of the whole dataset. Already-scrolled pixels
+          // sit above the sticky canvas.
+          const y = (r - windowStartRow) * cellSize - scrollTop;
           ctx.fillStyle = colourMode ? colourFor(d, light) : d < 5 ? SHAPE_INK.black : SHAPE_INK.white;
           ctx.fillRect(x, y, cellSize, cellSize);
         }
@@ -129,7 +136,7 @@ export default function PixelField({
       drawOutline(
         ctx,
         hCol,
-        hRow * cellSize - scrollTop,
+        (hRow - windowStartRow) * cellSize - scrollTop,
         h.cols ?? patternCols,
         h.rows ?? patternRows,
         cellSize,
@@ -166,13 +173,16 @@ export default function PixelField({
   // Hover → position info
   const handleMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onCellHover) return;
-    const rect = e.currentTarget.getBoundingClientRect();
     const scroll = scrollRef.current;
     if (!scroll) return;
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / cellSize);
+    // The canvas is sticky at the viewport top and paints row r at
+    // (r - windowStartRow) * cellSize - scrollTop, so invert that mapping:
+    // the row under the cursor includes the already-scrolled distance.
     const y = Math.floor((e.clientY - rect.top + scroll.scrollTop) / cellSize);
     const absRow = windowStartRow + y;
-    if (x < 0 || y < 0 || x >= fieldCols || absRow >= windowStartRow + windowRows) {
+    if (x < 0 || y < 0 || x >= fieldCols || absRow >= windowStartRow + windowRows || absRow >= totalRows) {
       onCellHover(null);
       return;
     }
@@ -231,8 +241,7 @@ function drawOutline(
 
 /** Legend swatches for the current mode. */
 export function FieldLegend({ colourMode }: { colourMode: boolean }) {
-  const theme = useSettings((s) => s.theme);
-  const light = theme === "light";
+  const light = useResolvedTheme() === "light";
   if (!colourMode) {
     return (
       <div className="flex items-center gap-3 text-xs" style={{ color: "var(--text-2)" }}>

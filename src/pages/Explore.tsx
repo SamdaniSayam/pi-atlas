@@ -389,7 +389,15 @@ function DigitsInspector() {
   const share = async () => {
     const url = buildShareUrl(`/explore/digits`, { mode: "digits", query: result.query, occurrence: selected });
     const how = await shareOrCopy(url, "π Atlas search");
-    toast(how === "copied" ? "Link copied to clipboard" : how === "shared" ? "Shared" : "Could not share the link");
+    toast(
+      how === "copied"
+        ? "Link copied to clipboard"
+        : how === "shared"
+          ? "Shared"
+          : how === "cancelled"
+            ? "Share cancelled"
+            : "Could not share the link",
+    );
   };
 
   return (
@@ -1206,7 +1214,15 @@ function PatternInspector({ mode }: { mode: SearchMode }) {
       fieldWidth: store.fieldWidth,
     });
     const how = await shareOrCopy(url, "π Atlas pattern");
-    toast(how === "copied" ? "Link copied" : how === "shared" ? "Shared" : "Could not share");
+    toast(
+      how === "copied"
+        ? "Link copied"
+        : how === "shared"
+          ? "Shared"
+          : how === "cancelled"
+            ? "Share cancelled"
+            : "Could not share",
+    );
   };
 
   return (

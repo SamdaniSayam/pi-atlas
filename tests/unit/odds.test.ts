@@ -50,6 +50,22 @@ describe("compareToDataset", () => {
     expect(c.verdict).toContain("Astronomically");
   });
 
+  it("counts fewer anchors when a tall image cannot fit in every row", () => {
+    // 1,000 digits folded at width 10 = 100 rows. A 1x90 image can only start
+    // in 11 rows; ignoring height would wrongly report all 100 rows.
+    const flat = compareToDataset(computeOdds(10, 1, 1), 1000, 10);
+    const tall = compareToDataset(computeOdds(10, 1, 90), 1000, 10);
+    expect(flat.log10Anchors).toBeCloseTo(Math.log10(1000), 10);
+    expect(tall.log10Anchors).toBeCloseTo(Math.log10(110), 10);
+    expect(Number.isFinite(tall.log10ExpectedMatches)).toBe(true);
+  });
+
+  it("reports an impossible fit when the image is taller than the folded rows", () => {
+    const c = compareToDataset(computeOdds(10, 4, 1000), 1000, 4);
+    expect(c.log10Anchors).toBe(Number.NEGATIVE_INFINITY);
+    expect(c.verdict).toMatch(/cannot fit/);
+  });
+
   it("maxFindablePixels grows with dataset size", () => {
     const p2m = maxFindablePixels(10, 2_000_000);
     expect(p2m).toBeGreaterThanOrEqual(6); // 10^6 < 2×10^6 ≤ 10^7

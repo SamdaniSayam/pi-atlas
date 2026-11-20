@@ -29,14 +29,28 @@ function notifySoon(): void {
 }
 
 function bucketIndex(position: number): number {
-  return Math.floor((position - 1) / BUCKET);
+  return Math.floor((Math.max(1, position) - 1) / BUCKET);
 }
 
 function bucketStart(b: number): number {
   return b * BUCKET + 1;
 }
 
+/** Mark a bucket as recently used without changing its value. */
+function touchBucket(b: number): string | undefined {
+  const digits = cache.get(b);
+  if (digits === undefined) return undefined;
+  cache.delete(b);
+  cache.set(b, digits);
+  return digits;
+}
+
 async function loadBucket(b: number): Promise<string> {
+  const cached = cache.get(b);
+  if (cached !== undefined) {
+    touchBucket(b);
+    return cached;
+  }
   const existing = inflight.get(b);
   if (existing) return existing;
   const p = fetchWindowDigits(bucketStart(b), bucketStart(b) + BUCKET - 1).finally(() => {
@@ -45,11 +59,13 @@ async function loadBucket(b: number): Promise<string> {
   inflight.set(b, p);
   try {
     const digits = await p;
+    cache.delete(b);
     cache.set(b, digits);
-    if (cache.size > MAX_BUCKETS) {
-      // Evict the oldest inserted bucket.
+    while (cache.size > MAX_BUCKETS) {
+      // Evict the least-recently-used bucket (Map insertion order).
       const oldest = cache.keys().next().value;
-      if (oldest !== undefined && oldest !== b) cache.delete(oldest);
+      if (oldest === undefined) break;
+      cache.delete(oldest);
     }
     notifySoon();
     return digits;
@@ -69,24 +85,30 @@ export function subscribeDigitWindows(l: () => void): () => void {
 
 /** Synchronous read of a contiguous range; returns null until all buckets arrive. */
 export function getCachedRange(start: number, count: number): string | null {
-  if (count <= 0) return "";
-  const first = bucketIndex(start);
-  const last = bucketIndex(start + count - 1);
+  if (!Number.isFinite(start) || !Number.isFinite(count)) return null;
+  const n = Math.trunc(count);
+  if (n <= 0) return "";
+  const firstPos = Math.max(1, Math.trunc(start));
+  const first = bucketIndex(firstPos);
+  const last = bucketIndex(firstPos + n - 1);
   let out = "";
   for (let b = first; b <= last; b += 1) {
-    const digits = cache.get(b);
-    if (!digits) return null;
+    const digits = touchBucket(b);
+    if (digits === undefined) return null;
     out += digits;
   }
-  const offset = start - bucketStart(first);
-  return out.slice(offset, offset + count);
+  const offset = firstPos - bucketStart(first);
+  return out.slice(offset, offset + n);
 }
 
 /** Kick off background loads for every bucket covering [start, start+count). */
 export function prefetchRange(start: number, count: number): void {
-  if (count <= 0) return;
-  const first = bucketIndex(start);
-  const last = bucketIndex(start + count - 1);
+  if (!Number.isFinite(start) || !Number.isFinite(count)) return;
+  const n = Math.trunc(count);
+  if (n <= 0) return;
+  const firstPos = Math.max(1, Math.trunc(start));
+  const first = bucketIndex(firstPos);
+  const last = bucketIndex(firstPos + n - 1);
   for (let b = first; b <= last; b += 1) {
     if (!cache.has(b) && !inflight.has(b)) void loadBucket(b).catch(() => undefined);
   }
@@ -94,17 +116,19 @@ export function prefetchRange(start: number, count: number): void {
 
 /** Await the digits for 1-based inclusive [start, start+count) (cache-aware). */
 export async function fetchDigitRange(start: number, count: number): Promise<string> {
-  const cached = getCachedRange(start, count);
+  const safeStart = Number.isFinite(start) ? Math.max(1, Math.trunc(start)) : 1;
+  const safeCount = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  const cached = getCachedRange(safeStart, safeCount);
   if (cached !== null) return cached;
   await Promise.all(
-    rangeBuckets(start, count).map((b) =>
+    rangeBuckets(safeStart, safeCount).map((b) =>
       loadBucket(b).catch(() => {
-        throw new Error(`Could not load digits near position ${start}.`);
+        throw new Error(`Could not load digits near position ${safeStart}.`);
       }),
     ),
   );
-  const digits = getCachedRange(start, count);
-  if (digits === null) throw new Error(`Could not load digits near position ${start}.`);
+  const digits = getCachedRange(safeStart, safeCount);
+  if (digits === null) throw new Error(`Could not load digits near position ${safeStart}.`);
   return digits;
 }
 
@@ -122,8 +146,13 @@ function rangeBuckets(start: number, count: number): number[] {
  */
 export function useDigitWindow(start: number, count: number): string | null {
   const [, force] = useReducer((x: number) => x + 1, 0);
-  useEffect(() => subscribeDigitWindows(force), []);
-  prefetchRange(start, count);
+  useEffect(() => {
+    const unsubscribe = subscribeDigitWindows(force);
+    // Fetching is an effect, not a render side effect; a cached value still
+    // renders synchronously below.
+    prefetchRange(start, count);
+    return unsubscribe;
+  }, [start, count]);
   return getCachedRange(start, count);
 }
 

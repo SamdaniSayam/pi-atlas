@@ -119,6 +119,16 @@ export function validateManifest(value: unknown): WebDatasetManifest {
     if (!Number.isSafeInteger(c.digits) || (c.digits as number) <= 0 || (c.digits as number) % 2 !== 0) {
       throw new ManifestError(`chunk ${i} digits invalid`);
     }
+    // chunkForPosition()/chunksForRange() assume every chunk except the last
+    // holds exactly `chunkDigits`; a manifest that violates that invariant
+    // would silently map positions into the wrong (SHA-verified) chunk.
+    const expectedDigits =
+      i === expectedChunks - 1
+        ? (totalDigits as number) - i * (chunkDigits as number)
+        : (chunkDigits as number);
+    if ((c.digits as number) !== expectedDigits) {
+      throw new ManifestError(`chunk ${i} digits ${String(c.digits)} != expected ${expectedDigits}`);
+    }
     if (c.bytes !== (c.digits as number) / 2) throw new ManifestError(`chunk ${i} bytes != digits/2`);
     if (c.packedOffset !== byteAcc) throw new ManifestError(`chunk ${i} packedOffset mismatch`);
     if (c.digitOffset !== digitAcc) throw new ManifestError(`chunk ${i} digitOffset mismatch`);

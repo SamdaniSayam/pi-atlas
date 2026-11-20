@@ -105,6 +105,29 @@ describe("searchPattern: wildcards and modes", () => {
   });
 });
 
+describe("searchPattern boundary hardening", () => {
+  it("never anchors a multi-row pattern on a partial last row", () => {
+    // 8 digits / 3 columns = rows "111","111","11"; only rows 0 and 1 are
+    // complete, so a 2-row pattern has exactly one anchor row.
+    const digits = "11111111";
+    const spec: PatternSpec = { rows: 2, cols: 1, cells: [1, 1], colourMode: true };
+    const r = searchPattern(digits, spec, { ...SILENT, fieldCols: 3 });
+    expect(r.total).toBe(3);
+    expect(r.matches.every((m) => m.position <= 6)).toBe(true);
+  });
+
+  it("returns no anchors for invalid field or pattern dimensions", () => {
+    const spec: PatternSpec = { rows: 1, cols: 2, cells: [1, 1], colourMode: true };
+    for (const fieldCols of [0, -4, NaN]) {
+      const r = searchPattern("111111", spec, { ...SILENT, fieldCols });
+      expect(r.total).toBe(0);
+      expect(r.anchors).toBe(0);
+    }
+    const tooWide: PatternSpec = { rows: 1, cols: 5, cells: [1, 1, 1, 1, 1], colourMode: true };
+    expect(searchPattern("111111", tooWide, { ...SILENT, fieldCols: 3 }).anchors).toBe(0);
+  });
+});
+
 describe("expectedPatternMatches", () => {
   it("uses anchors / base^k", () => {
     const spec: PatternSpec = { rows: 1, cols: 2, cells: [1, 2], colourMode: true };

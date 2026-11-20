@@ -11,7 +11,13 @@ import { digits } from "../helpers/dataset";
 import { usePiStore } from "../../src/data/piStore";
 import { useSearch } from "../../src/state/useSearch";
 import { useHistory } from "../../src/state/useHistory";
-import { useSettings, DEFAULT_SETTINGS, applySettingsToDocument } from "../../src/state/useSettings";
+import {
+  useSettings,
+  DEFAULT_SETTINGS,
+  applySettingsToDocument,
+  normalizeSettings,
+  resolveTheme,
+} from "../../src/state/useSettings";
 import { searchDigits } from "../../src/engine/digitsSearch";
 import { searchWord } from "../../src/engine/lettersSearch";
 import { searchDate } from "../../src/engine/dates";
@@ -225,5 +231,50 @@ describe("settings", () => {
     applySettingsToDocument({ ...DEFAULT_SETTINGS, theme: "dark", reducedMotion: true });
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.documentElement.dataset.reducedMotion).toBe("true");
+  });
+
+  it("validates corrupted persisted settings and rejected updates", () => {
+    const clean = normalizeSettings({
+      theme: "neon" as "dark",
+      digitDensity: 1e9,
+      pixelWidth: -500,
+      cellSize: Number.NaN,
+      reducedMotion: "yes" as unknown as boolean,
+      showDigitLabels: 0 as unknown as boolean,
+      colourBlindSymbols: true,
+    });
+    expect(clean).toEqual({
+      theme: "system",
+      digitDensity: 200,
+      pixelWidth: 16,
+      cellSize: 12,
+      reducedMotion: false,
+      showDigitLabels: true,
+      colourBlindSymbols: true,
+    });
+    useSettings.getState().update({ theme: "neon" as "dark", cellSize: -100 });
+    expect(useSettings.getState().theme).toBe("system");
+    expect(useSettings.getState().cellSize).toBe(4);
+    useSettings.getState().reset();
+  });
+
+  it("resolves the system theme against the OS preference", () => {
+    const original = window.matchMedia;
+    try {
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes("light"),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia;
+      expect(resolveTheme("system")).toBe("light");
+      expect(resolveTheme("dark")).toBe("dark");
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

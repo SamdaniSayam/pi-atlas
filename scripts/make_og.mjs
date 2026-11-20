@@ -105,7 +105,7 @@ const html = `<!doctype html>
   <div class="glow"></div>
   <div class="frame">
     <div class="brand"><span class="pi">π</span><span class="name">Atlas</span></div>
-    <div class="tagline">Two million digits. Every number, word, colour and shape — hiding somewhere.</div>
+    <div class="tagline">One billion digits. Every number, word, colour and shape — hiding somewhere.</div>
     <div class="search">999999 · digit 762</div>
     <div class="stream digits">
 ${row(0, 112)}<br>

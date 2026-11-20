@@ -22,22 +22,23 @@ export default function Minimap({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
+  const safeSize = Math.max(1, Math.trunc(datasetSize) || 1);
 
   // Bucket matches into 200 columns for the density strip
   const BUCKETS = 200;
   const density = useMemo(() => {
     const buckets = new Int32Array(BUCKETS);
     for (const m of matches) {
-      const idx = Math.min(BUCKETS - 1, Math.floor(((m - 1) / datasetSize) * BUCKETS));
+      const idx = Math.min(BUCKETS - 1, Math.max(0, Math.floor(((m - 1) / safeSize) * BUCKETS)));
       buckets[idx] += 1;
     }
     const max = Math.max(1, ...buckets);
     return { buckets, max };
-  }, [matches, datasetSize]);
+  }, [matches, safeSize]);
 
   const pct = useCallback(
-    (pos: number) => Math.min(100, Math.max(0, ((pos - 1) / datasetSize) * 100)),
-    [datasetSize],
+    (pos: number) => Math.min(100, Math.max(0, ((pos - 1) / safeSize) * 100)),
+    [safeSize],
   );
 
   const seekFromEvent = useCallback(
@@ -46,22 +47,28 @@ export default function Minimap({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      onSeek(Math.max(1, Math.round(ratio * datasetSize)));
+      onSeek(Math.max(1, Math.round(ratio * safeSize)));
     },
-    [datasetSize, onSeek],
+    [safeSize, onSeek],
   );
 
   useEffect(() => {
     if (!dragging) return;
     const move = (e: PointerEvent) => seekFromEvent(e.clientX);
-    const up = () => setDragging(false);
+    const stop = () => setDragging(false);
     window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
     return () => {
       window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
     };
   }, [dragging, seekFromEvent]);
+
+  const seekBy = (delta: number): void => {
+    onSeek(Math.min(safeSize, Math.max(1, Math.round(viewportStart + delta))));
+  };
 
   return (
     <div className="select-none px-1">
@@ -75,8 +82,8 @@ export default function Minimap({
         role="slider"
         aria-label="Dataset position"
         aria-valuemin={1}
-        aria-valuemax={datasetSize}
-        aria-valuenow={viewportStart}
+        aria-valuemax={safeSize}
+        aria-valuenow={Math.min(safeSize, Math.max(1, viewportStart))}
         aria-valuetext={`Viewing positions ${formatInt(viewportStart)} to ${formatInt(viewportEnd)}`}
         tabIndex={0}
         className="relative h-9 cursor-pointer overflow-hidden rounded-lg"
@@ -86,8 +93,15 @@ export default function Minimap({
           seekFromEvent(e.clientX);
         }}
         onKeyDown={(e) => {
-          if (e.key === "ArrowRight") onSeek(viewportStart + Math.max(1, (viewportEnd - viewportStart) / 2));
-          if (e.key === "ArrowLeft") onSeek(viewportStart - Math.max(1, (viewportEnd - viewportStart) / 2));
+          const step = Math.max(1, (viewportEnd - viewportStart) / 2);
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            seekBy(step);
+          }
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            seekBy(-step);
+          }
         }}
       >
         {/* density strip */}

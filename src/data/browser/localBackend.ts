@@ -41,6 +41,10 @@ interface PendingCall {
   reject: (error: Error) => void;
 }
 
+/** Bounded per-session caches: a long-lived tab must not grow without limit. */
+const MAX_JOBS = 100;
+const MAX_RESULTS = 24;
+
 /** Stable cache keys — identical to Rust `jobs_create.rs`. */
 export function cacheKey(kind: string, body: Record<string, unknown>): string {
   switch (kind) {
@@ -88,17 +92,29 @@ class LocalBackend {
   init(): Promise<void> {
     if (this.ready) return this.ready;
     this.ready = this.doInit().catch((err) => {
-      this.fatalError = err instanceof Error ? err.message : String(err);
-      // Allow a later retry after a transient failure (e.g. manifest 404).
-      this.ready = null;
-      this.worker?.terminate();
-      this.worker = null;
+      this.fail(err instanceof Error ? err : new Error(String(err)));
       throw err;
     });
     return this.ready;
   }
 
+  /** Tear down a broken worker and reject every request that can never settle. */
+  private fail(error: Error): void {
+    this.fatalError = error.message;
+    const pending = [...this.pending.values()];
+    this.pending.clear();
+    for (const call of pending) call.reject(error);
+    this.ready = null;
+    try {
+      this.worker?.terminate();
+    } catch {
+      // ignore teardown errors
+    }
+    this.worker = null;
+  }
+
   private async doInit(): Promise<void> {
+    this.fatalError = null;
     const root = datasetRoot();
     const [webRes, coreRes] = await Promise.all([
       fetch(`${root}web-manifest.json`, { cache: "force-cache" }),
@@ -113,7 +129,7 @@ class LocalBackend {
     this.worker = new Worker(new URL("./searchWorker.ts", import.meta.url), { type: "module" });
     this.worker.onmessage = (event: MessageEvent<WorkerResponse>) => this.handle(event.data);
     this.worker.onerror = (event) => {
-      this.fatalError = event.message || "search worker crashed";
+      this.fail(new Error(event.message || "search worker crashed"));
     };
 
     await this.call({
@@ -127,10 +143,16 @@ class LocalBackend {
 
   private call(message: WorkerRequest): Promise<unknown> {
     if (!this.worker) return Promise.reject(new Error("search worker not started"));
+    if (this.fatalError) return Promise.reject(new Error(this.fatalError));
     const requestId = this.nextRequestId++;
     return new Promise<unknown>((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject });
-      this.worker!.postMessage({ ...message, requestId });
+      try {
+        this.worker!.postMessage({ ...message, requestId });
+      } catch (err) {
+        this.pending.delete(requestId);
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
     });
   }
 
@@ -157,7 +179,7 @@ class LocalBackend {
         // Never cache a partial result — a cancelled/deadline-stopped scan must
         // not become the permanent answer to an identical later query.
         if (job.status === "done" && !hasIncomplete(job.result)) {
-          this.results.set(job.__key, job.result);
+          this.remember(job.__key, job.result);
         }
       }
       this.settle(msg.requestId, msg.type === "result" ? msg.result : new Error(msg.error));
@@ -167,7 +189,27 @@ class LocalBackend {
       this.settle(msg.requestId, msg);
       return;
     }
-    if (msg.type === "fatal") this.fatalError = msg.error;
+    if (msg.type === "fatal") this.fail(new Error(msg.error));
+  }
+
+  /** Insert into the bounded result cache, refreshing LRU order. */
+  private remember(key: string, result: unknown): void {
+    this.results.delete(key);
+    this.results.set(key, result);
+    while (this.results.size > MAX_RESULTS) {
+      const oldest = this.results.keys().next().value;
+      if (oldest === undefined) break;
+      this.results.delete(oldest);
+    }
+  }
+
+  /** Drop old settled jobs before adding another one. */
+  private pruneJobs(): void {
+    if (this.jobs.size < MAX_JOBS) return;
+    for (const [id, job] of this.jobs) {
+      if (this.jobs.size < MAX_JOBS) break;
+      if (job.status !== "running") this.jobs.delete(id);
+    }
   }
 
   private settle(requestId: number | undefined, value: unknown): void {
@@ -185,16 +227,23 @@ class LocalBackend {
     if (this.fatalError) throw new Error(this.fatalError);
     const key = cacheKey(kind, body);
     const cached = this.results.get(key);
-    if (cached !== undefined) return { cached: true, result: cached as T };
+    if (cached !== undefined) {
+      // Refresh LRU position.
+      this.results.delete(key);
+      this.results.set(key, cached);
+      return { cached: true, result: cached as T };
+    }
 
     // One heavy search per tab: mark any previous running job cancelled.
     for (const job of this.jobs.values()) {
       if (job.status === "running") {
         job.status = "cancelled";
+        job.elapsedMs = Date.now() - job.startedAt;
         job.settledAt = Date.now();
         job.progress = null;
       }
     }
+    this.pruneJobs();
 
     const id = this.nextId++;
     const job: LocalJob = {
@@ -233,6 +282,7 @@ class LocalBackend {
     const job = this.jobs.get(id);
     if (job && job.status === "running") {
       job.status = "cancelled";
+      job.elapsedMs = Date.now() - job.startedAt;
       job.settledAt = Date.now();
       job.progress = null;
       this.worker?.postMessage({ type: "cancel", id } satisfies WorkerRequest);
@@ -248,17 +298,29 @@ class LocalBackend {
   /** Static data endpoints — also routed through the worker. */
   async fetchWindowDigits(start: number, end: number): Promise<string> {
     await this.init();
+    if (this.fatalError) throw new Error(this.fatalError);
+    const total = this.manifest?.totalDigits ?? 0;
+    const rawStart = Math.trunc(start);
+    const rawEnd = Math.trunc(end);
+    if (!Number.isFinite(rawStart) || !Number.isFinite(rawEnd)) return "";
+    // The last window can overrun the dataset by up to BUCKET-1 digits. Clamp
+    // instead of asking WASM for positions that do not exist.
+    if (total <= 0 || rawStart > total || rawEnd < 1) return "";
+    const safeStart = Math.max(1, Math.min(total, rawStart));
+    const safeEnd = Math.max(1, Math.min(total, rawEnd));
+    if (safeEnd < safeStart) return "";
     const res = (await this.call({
       type: "job",
       id: -(this.nextRequestId++),
       kind: "window",
-      payload: { start, end },
-    })) as { digits: string };
+      payload: { start: safeStart, end: safeEnd },
+    })) as { first_position: number; digits: string };
     return res.digits;
   }
 
   async fetchSamples(count: number): Promise<{ total_digits: number; samples: Array<{ position: number; digit: number }> }> {
     await this.init();
+    if (this.fatalError) throw new Error(this.fatalError);
     return this.call({
       type: "job",
       id: -(this.nextRequestId++),
@@ -270,6 +332,7 @@ class LocalBackend {
   /** Returns the camelCase DigitStats shape already produced by `statsDto`. */
   async fetchStats(): Promise<{ counts: number[]; totalDigits: number; chiSquare: number }> {
     await this.init();
+    if (this.fatalError) throw new Error(this.fatalError);
     return this.call({ type: "job", id: -(this.nextRequestId++), kind: "stats", payload: {} }) as Promise<{
       counts: number[];
       totalDigits: number;

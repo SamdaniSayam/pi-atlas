@@ -8,7 +8,7 @@ import { computeOdds, compareToDataset, maxFindablePixels, MAGNITUDE_ANCHORS } f
 import { formatMagnitude } from "../engine/format";
 import { useDatasetSize } from "../data/piStore";
 import { colourFor } from "../engine/palette";
-import { useSettings } from "../state/useSettings";
+import { useResolvedTheme } from "../state/useSettings";
 
 const COLOURS = 10;
 
@@ -60,7 +60,6 @@ export default function OddsLab() {
   const [height, setHeight] = useState(4);
   const [grid, setGrid] = useState<number[][]>(() => proceduralSample(4, 4));
   const [imageName, setImageName] = useState<string | null>(null);
-  const theme = useSettings((s) => s.theme);
   const datasetSize = useDatasetSize();
   const fileRef = useRef<HTMLInputElement>(null);
   const imageUrlRef = useRef<string | null>(null);
@@ -96,14 +95,12 @@ export default function OddsLab() {
     repaint();
   };
 
-  const light = theme === "light";
+  const light = useResolvedTheme() === "light";
   const palette = Array.from({ length: colours }, (_, i) =>
     colourFor(Math.round((i / Math.max(1, colours - 1)) * 9), light),
   );
 
   const oneIn = odds.probability > 0 ? 1 / odds.probability : Number.POSITIVE_INFINITY;
-  const anchors = Math.max(1, Math.floor(datasetSize / width) * Math.max(1, width - width + 1));
-  void anchors;
   const log10Expected = comparison.log10ExpectedMatches;
   const expectedFinds =
     log10Expected > 2
@@ -265,7 +262,7 @@ export default function OddsLab() {
                     <div className="h-full w-0.5" style={{ background: "var(--accent)" }} />
                     <span
                       className="absolute -top-0.5 left-1 whitespace-nowrap rounded px-1 text-[0.65rem]"
-                      style={{ background: "var(--accent)", color: "#08110d", fontWeight: 700 }}
+                      style={{ background: "var(--accent)", color: "var(--accent-ink)", fontWeight: 700 }}
                     >
                       your image
                     </span>

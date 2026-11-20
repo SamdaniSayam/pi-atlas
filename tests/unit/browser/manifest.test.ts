@@ -34,6 +34,30 @@ describe("web manifest validation", () => {
     expect(() => validateManifest(badBytes)).toThrow(/bytes/);
   });
 
+  it("accepts a shorter final chunk", async () => {
+    const { manifest } = await makeDataset(100, 2);
+    const shortLast = {
+      ...manifest,
+      totalDigits: 150,
+      packedBytes: manifest.chunks[0].bytes + 25,
+      chunks: manifest.chunks.map((c, i) => (i === 1 ? { ...c, digits: 50, bytes: 25 } : c)),
+    };
+    expect(validateManifest(shortLast).chunks[1].digits).toBe(50);
+  });
+
+  it("rejects non-uniform chunk geometry even when the digit sum still matches", async () => {
+    const { manifest } = await makeDataset(100, 4);
+    const bad = {
+      ...manifest,
+      chunks: manifest.chunks.map((c, i) => {
+        if (i === 0) return { ...c, digits: 102, bytes: 51 };
+        if (i === 1) return { ...c, digits: 98, bytes: 49 };
+        return c;
+      }),
+    };
+    expect(() => validateManifest(bad)).toThrow(/digits \d+ != expected/);
+  });
+
   it("rejects malformed checksums", async () => {
     const { manifest } = await makeDataset(100, 2);
     expect(() => validateManifest({ ...manifest, sha256Packed: "xyz" })).toThrow(/sha256Packed/);

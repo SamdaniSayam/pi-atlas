@@ -5,7 +5,7 @@
  * (position 1 = the first digit after the decimal point).
  * Matches are counted with overlapping semantics.
  */
-import { DATASET_SIZE, MAX_NUMBER_QUERY_LENGTH } from "../constants";
+import { MAX_NUMBER_QUERY_LENGTH } from "../constants";
 import { difficultyFor, type DifficultyInfo } from "./format";
 
 export interface DigitsSearchResult {
@@ -52,16 +52,36 @@ function countOccurrences(haystack: string, needle: string, cap: number): {
   total: number;
 } {
   const positions: number[] = [];
+  // String#indexOf("", from) never returns -1 once from reaches haystack.length,
+  // so an empty needle would spin forever. Reject it at the boundary.
+  if (!needle) return { positions, total: 0 };
+  const limit = Math.max(0, Math.trunc(cap));
   let total = 0;
   let from = 0;
   for (;;) {
     const idx = haystack.indexOf(needle, from);
     if (idx === -1) break;
     total += 1;
-    if (positions.length < cap) positions.push(idx + 1); // 1-based decimal position
+    if (positions.length < limit) positions.push(idx + 1); // 1-based decimal position
     from = idx + 1; // overlapping matches
   }
   return { positions, total };
+}
+
+function emptyResult(rawQuery: string): DigitsSearchResult {
+  return {
+    query: rawQuery,
+    length: rawQuery.length,
+    found: false,
+    positions: [],
+    total: 0,
+    expectedCount: 0,
+    luckRatio: 0,
+    expectedFirstDepth: 10 ** rawQuery.length,
+    longestExistingPrefix: 0,
+    longestExistingPrefixPosition: 0,
+    difficulty: difficultyFor(0),
+  };
 }
 
 /**
@@ -74,8 +94,12 @@ export function searchDigits(
   matchCap = 200_000,
 ): DigitsSearchResult {
   const L = rawQuery.length;
+  if (L === 0 || !/^[0-9]+$/.test(rawQuery)) return emptyResult(rawQuery);
   const { positions, total } = countOccurrences(digits, rawQuery, matchCap);
-  const expectedCount = (DATASET_SIZE - L + 1) / 10 ** L;
+  // Use the actual haystack length, never a hardcoded fixture size: the same
+  // engine powers both the 2M tests and the 1B runtime dataset.
+  const possibleStarts = Math.max(0, digits.length - L + 1);
+  const expectedCount = possibleStarts / 10 ** L;
   const found = total > 0;
 
   let longestExistingPrefix = 0;
@@ -99,7 +123,7 @@ export function searchDigits(
     positions,
     total,
     expectedCount,
-    luckRatio: found ? total / expectedCount : 0,
+    luckRatio: found && expectedCount > 0 ? total / expectedCount : 0,
     expectedFirstDepth: 10 ** L,
     longestExistingPrefix,
     longestExistingPrefixPosition,
@@ -118,12 +142,17 @@ export function contextAt(
   queryLength: number,
   radius = 24,
 ): { before: string; match: string; after: string } {
-  const start = Math.max(0, position - 1 - radius);
-  const matchStart = position - 1;
-  const matchEnd = matchStart + queryLength;
+  // Positions are 1-based. Clamp hostile/accidental zero, negative, NaN and
+  // fractional values so a negative slice can never leak the whole dataset.
+  const safePosition = Number.isFinite(position) ? Math.max(1, Math.trunc(position)) : 1;
+  const safeLength = Number.isFinite(queryLength) ? Math.max(0, Math.trunc(queryLength)) : 0;
+  const safeRadius = Number.isFinite(radius) ? Math.max(0, Math.trunc(radius)) : 0;
+  const matchStart = Math.min(digits.length, safePosition - 1);
+  const start = Math.max(0, matchStart - safeRadius);
+  const matchEnd = Math.min(digits.length, matchStart + safeLength);
   return {
     before: digits.slice(start, matchStart),
     match: digits.slice(matchStart, matchEnd),
-    after: digits.slice(matchEnd, matchEnd + radius),
+    after: digits.slice(matchEnd, matchEnd + safeRadius),
   };
 }

@@ -5,14 +5,13 @@ import { submitPattern, pollJob, type PatternResult } from "../data/piApi";
 import { useDigitWindow } from "../data/digitWindow";
 import { formatInt, formatOneIn } from "../engine/format";
 import { ActHeader } from "./TourStage";
-import { useSettings } from "../state/useSettings";
+import { useResolvedTheme } from "../state/useSettings";
 
 const W = 36;
 const ROWS = 8;
 
 export default function Act3Colours() {
-  const theme = useSettings((s) => s.theme);
-  const light = theme === "light";
+  const light = useResolvedTheme() === "light";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [morph, setMorph] = useState(0); // 0 = raw digits, 1 = full colour field
   const [result, setResult] = useState<{ total: number; first: number | null } | null>(null);

@@ -38,7 +38,11 @@ const bad = (m) => { console.error("ERROR: " + m); process.exit(1); };
 if (web.format !== "pi-atlas-packed-v1") bad(`web format ${web.format}`);
 if (core.format !== web.format) bad("web/core manifest format mismatch");
 if (web.totalDigits !== core.total_digits) bad("web/core totalDigits mismatch");
+if (web.chunkDigits !== core.chunk_digits) bad("web/core chunkDigits mismatch");
+if (web.firstDigits !== core.first_digits) bad("web/core firstDigits mismatch");
+if (web.sha256Packed !== core.sha256_packed) bad("web/core sha256Packed mismatch");
 if (web.chunkCount !== web.chunks.length) bad("chunkCount != chunks.length");
+if (Array.isArray(core.chunks) && core.chunks.length !== web.chunks.length) bad("web/core chunk count mismatch");
 if (!Array.isArray(web.chunks) || web.chunks.length === 0) bad("no chunks");
 
 // Verify every chunk's SHA-256 and packed byte length against the manifest.
@@ -51,6 +55,14 @@ web.chunks.forEach((c, i) => {
   if (bytes.length !== c.bytes) bad(`chunk ${i} length ${bytes.length} != ${c.bytes}`);
   const sha = crypto.createHash("sha256").update(bytes).digest("hex");
   if (sha !== c.sha256) bad(`chunk ${i} sha256 mismatch`);
+  // The WASM engine re-verifies every chunk against the core manifest. A
+  // divergent web manifest would make the shipped dataset unusable at runtime.
+  const coreChunk = Array.isArray(core.chunks) ? core.chunks[i] : undefined;
+  if (coreChunk) {
+    if (coreChunk.digits !== c.digits) bad(`chunk ${i} digits differ from core manifest`);
+    if (coreChunk.bytes !== c.bytes) bad(`chunk ${i} bytes differ from core manifest`);
+    if (coreChunk.sha256 !== c.sha256) bad(`chunk ${i} sha256 differs from core manifest`);
+  }
   totalBytes += bytes.length;
 });
 if (totalBytes !== web.packedBytes) bad(`packed bytes ${totalBytes} != ${web.packedBytes}`);

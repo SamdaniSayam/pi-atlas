@@ -159,15 +159,25 @@ export const useSearch = create<SearchState>((set) => {
   ): Promise<R | null> {
     const token = ++runToken;
     await cancelActiveJob();
+    if (token !== runToken) return null; // a newer run started during cancellation
     set({ searching: true, progress: null, searchError: null });
     try {
       const submission = await submit();
-      if (submission.cached) {
-        const converted = convert(submission.result);
-        if (token === runToken) {
-          set({ searching: false, progress: null, selectedOccurrence: 1 });
+      if (token !== runToken) {
+        // Superseded while the submit request was in flight: stop the job we
+        // just created instead of letting it run (and later overwrite state).
+        if (!submission.cached) {
+          try {
+            await cancelJob(submission.jobId);
+          } catch {
+            // best effort
+          }
         }
-        return converted;
+        return null;
+      }
+      if (submission.cached) {
+        set({ searching: false, progress: null, selectedOccurrence: 1 });
+        return convert(submission.result);
       }
       const jobId = submission.jobId;
       activeJobId = jobId;
@@ -210,7 +220,16 @@ export const useSearch = create<SearchState>((set) => {
     runDigits: async (query) => {
       const cleaned = query.replace(/[^0-9]/g, "").slice(0, 20);
       if (!cleaned) {
-        set({ digitsResult: null, selectedOccurrence: 1 });
+        // Clearing the box must also stop an older search from filling it in.
+        runToken += 1;
+        await cancelActiveJob();
+        set({
+          digitsResult: null,
+          selectedOccurrence: 1,
+          searching: false,
+          progress: null,
+          searchError: null,
+        });
         return null;
       }
       const size = datasetSize();
@@ -221,9 +240,10 @@ export const useSearch = create<SearchState>((set) => {
       );
       if (!result) return null;
       set({ digitsResult: result, lettersResult: null, datesResult: null });
+      const first = result.positions[0];
       announce(
-        result.found
-          ? `Found ${cleaned} at position ${formatInt(result.positions[0])}. ${formatInt(result.total)} occurrences.`
+        result.found && first
+          ? `Found ${cleaned} at position ${formatInt(first)}. ${formatInt(result.total)} occurrences.`
           : `${cleaned} was not found in the dataset.`,
       );
       return result;
@@ -265,6 +285,9 @@ export const useSearch = create<SearchState>((set) => {
     },
 
     cancelSearch: async () => {
+      // Invalidate every in-flight run before cancelling: a result that lands
+      // while the cancel request is travelling must not be committed.
+      runToken += 1;
       await cancelActiveJob();
       set({ searching: false, progress: null });
     },

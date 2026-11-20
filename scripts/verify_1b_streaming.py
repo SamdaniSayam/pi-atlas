@@ -13,6 +13,9 @@ import json
 import os
 import sys
 
+if sys.flags.optimize:
+    raise SystemExit("FAIL: this verifier depends on assertions; do not run with python -O")
+
 BLOCK = 1024 * 1024
 DEFAULT_DIR = "/home/megalith/pi-atlas-build/data-1b"
 

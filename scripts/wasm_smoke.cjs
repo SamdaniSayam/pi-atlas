@@ -133,19 +133,27 @@ function main() {
 
   ok("get_window works with only the owning chunks resident", () => {
     const partial = new PiEngine(manifestJson);
-    const bytes = packed.subarray(0, manifest.chunks[0].bytes);
-    partial.set_chunk(0, new Uint8Array(bytes));
-    assert.equal(partial.get_window(1n, 10n), "1415926535");
-    assert.equal(partial.loaded_chunks(), 1);
-    assert.throws(() => partial.get_window(1_000_001n, 1_000_010n), /not loaded/);
+    try {
+      const bytes = packed.subarray(0, manifest.chunks[0].bytes);
+      partial.set_chunk(0, new Uint8Array(bytes));
+      assert.equal(partial.get_window(1n, 10n), "1415926535");
+      assert.equal(partial.loaded_chunks(), 1);
+      assert.throws(() => partial.get_window(1_000_001n, 1_000_010n), /not loaded/);
+    } finally {
+      partial.free();
+    }
   });
 
   ok("set_chunk rejects checksum-corrupted data", () => {
     const badEngine = new PiEngine(manifestJson);
-    const bad = new Uint8Array(manifest.chunks[0].bytes);
-    bad[0] ^= 0x01;
-    assert.throws(() => badEngine.set_chunk(0, bad), /sha256 mismatch/);
-    assert.equal(badEngine.loaded_chunks(), 0);
+    try {
+      const bad = new Uint8Array(manifest.chunks[0].bytes);
+      bad[0] ^= 0x01;
+      assert.throws(() => badEngine.set_chunk(0, bad), /sha256 mismatch/);
+      assert.equal(badEngine.loaded_chunks(), 0);
+    } finally {
+      badEngine.free();
+    }
   });
 
   console.log(`\nAll ${checks} WASM smoke checks passed against the real 2M π fixture.`);

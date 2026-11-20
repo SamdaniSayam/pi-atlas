@@ -60,7 +60,7 @@ export default function Header({
             className="grid h-8 w-8 place-items-center rounded-lg font-semibold"
             style={{
               background: "var(--accent)",
-              color: "#08110d",
+              color: "var(--accent-ink)",
               fontFamily: "var(--font-display)",
               fontSize: "1.05rem",
             }}

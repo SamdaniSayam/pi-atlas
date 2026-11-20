@@ -10,9 +10,9 @@ export interface DateFormatSpec {
 const pad = (n: number, w: number) => String(n).padStart(w, "0");
 
 export const DATE_FORMATS: DateFormatSpec[] = [
-  { id: "DDMMYYYY", label: "DDMMYYYY", encode: (y, m, d) => `${pad(d, 2)}${pad(m, 2)}${y}` },
-  { id: "MMDDYYYY", label: "MMDDYYYY", encode: (y, m, d) => `${pad(m, 2)}${pad(d, 2)}${y}` },
-  { id: "YYYYMMDD", label: "YYYYMMDD", encode: (y, m, d) => `${y}${pad(m, 2)}${pad(d, 2)}` },
+  { id: "DDMMYYYY", label: "DDMMYYYY", encode: (y, m, d) => `${pad(d, 2)}${pad(m, 2)}${pad(y, 4)}` },
+  { id: "MMDDYYYY", label: "MMDDYYYY", encode: (y, m, d) => `${pad(m, 2)}${pad(d, 2)}${pad(y, 4)}` },
+  { id: "YYYYMMDD", label: "YYYYMMDD", encode: (y, m, d) => `${pad(y, 4)}${pad(m, 2)}${pad(d, 2)}` },
   { id: "DDMMYY", label: "DDMMYY", encode: (y, m, d) => `${pad(d, 2)}${pad(m, 2)}${pad(y % 100, 2)}` },
   { id: "MMDDYY", label: "MMDDYY", encode: (y, m, d) => `${pad(m, 2)}${pad(d, 2)}${pad(y % 100, 2)}` },
   { id: "YYMMDD", label: "YYMMDD", encode: (y, m, d) => `${pad(y % 100, 2)}${pad(m, 2)}${pad(d, 2)}` },
@@ -59,9 +59,13 @@ export function searchDate(
   }
   rows.sort((a, b) => {
     if (a.result.found !== b.result.found) return a.result.found ? -1 : 1;
-    const pa = a.result.positions[0] ?? Number.POSITIVE_INFINITY;
-    const pb = b.result.positions[0] ?? Number.POSITIVE_INFINITY;
-    return pa - pb;
+    const pa = a.result.positions[0];
+    const pb = b.result.positions[0];
+    const safeA = Number.isFinite(pa) ? pa : Number.POSITIVE_INFINITY;
+    const safeB = Number.isFinite(pb) ? pb : Number.POSITIVE_INFINITY;
+    if (safeA !== safeB) return safeA - safeB;
+    // Stable ordering for equal/absent positions: keep DATE_FORMATS order.
+    return DATE_FORMATS.indexOf(a.spec) - DATE_FORMATS.indexOf(b.spec);
   });
   return { rows };
 }

@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   CANONICAL_SITE_URL,
   absoluteSocialImage,
@@ -27,5 +29,20 @@ describe("build-time social image URLs", () => {
     expect(absoluteSocialImage("not a url")).toBe(
       "https://samdanisayam.github.io/pi-atlas/og.png",
     );
+  });
+});
+
+describe("Open Graph document metadata", () => {
+  const html = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
+
+  it("declares type, canonical URL and image dimensions", () => {
+    for (const tag of [
+      'property="og:type" content="website"',
+      'property="og:url" content="https://samdanisayam.github.io/pi-atlas/"',
+      'property="og:image:width" content="1200"',
+      'property="og:image:height" content="630"',
+    ]) {
+      expect(html).toContain(tag);
+    }
   });
 });

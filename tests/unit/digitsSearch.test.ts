@@ -113,3 +113,29 @@ describe("contextAt", () => {
     expect(ctx.match).toBe(digits[0]);
   });
 });
+
+describe("digitsSearch runtime hardening", () => {
+  it("returns an empty result for empty/non-digit queries (no infinite loop)", () => {
+    for (const q of ["", "abc", "12a", "١٢٣"]) {
+      const r = searchDigits("14159265", q);
+      expect(r.found).toBe(false);
+      expect(r.total).toBe(0);
+      expect(r.positions).toEqual([]);
+    }
+  });
+
+  it("derives expectedCount from the runtime haystack, not a hardcoded fixture", () => {
+    const r = searchDigits("1415", "14");
+    expect(r.expectedCount).toBeCloseTo(3 / 100, 12);
+    expect(searchDigits("", "1").expectedCount).toBe(0);
+  });
+
+  it("clamps hostile positions, lengths and radii in contextAt", () => {
+    const hay = "0123456789";
+    expect(contextAt(hay, NaN, 2, 3)).toEqual({ before: "", match: "01", after: "234" });
+    expect(contextAt(hay, -50, 2, 3).match).toBe("01");
+    expect(contextAt(hay, 4, -5, 3).match).toBe("");
+    expect(contextAt(hay, 4, 2, -3).after).toBe("");
+    expect(contextAt(hay, 6, 2, 1.9).after).toBe("7");
+  });
+});

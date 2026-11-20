@@ -14,6 +14,11 @@ if (!window.matchMedia) {
   })) as unknown as typeof window.matchMedia;
 }
 
+// jsdom does not implement scrolling APIs used by virtualised/canvas views.
+if (typeof Element.prototype.scrollTo !== "function") {
+  Element.prototype.scrollTo = () => undefined;
+}
+
 if (typeof window.ResizeObserver === "undefined") {
   window.ResizeObserver = class {
     observe() {}

@@ -5,13 +5,20 @@
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { SmokeHarness } from "./helpers.mjs";
+
+// Decode QR plates in Node rather than injecting jsQR into the page: the
+// production build sets a strict CSP (`script-src 'self' 'wasm-unsafe-eval'`)
+// that blocks page.addScriptTag's inline injection. CDP evaluate (used to read
+// canvas pixels) is not subject to CSP.
+const require = createRequire(import.meta.url);
+const jsQR = require("jsqr");
 
 // Short allow-list for known-harmless failed requests. Empty by default.
 const ALLOW_FAILED_REQUESTS = [];
 
 const ROOT = path.resolve(process.cwd());
-const JSQR = path.join(ROOT, "node_modules/jsqr/dist/jsQR.js");
 const BANNER = '[role="region"][aria-label="Shared result"]';
 const WISH = 'section[aria-label="Your wish card"]';
 const QR_PLATES = {
@@ -83,16 +90,20 @@ async function openDialog(page) {
 }
 
 async function decodeQr(page, selector, format = "square", style = "collectible") {
-  await page.addScriptTag({ path: JSQR });
-  return page.evaluate(({ sel, plate }) => {
+  const plate = QR_PLATES[style][format];
+  const base64 = await page.evaluate(({ sel, p }) => {
     const canvas = document.querySelector(sel);
     if (!(canvas instanceof HTMLCanvasElement)) return null;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    const data = ctx.getImageData(plate.x, plate.y, plate.size, plate.size).data;
-    const jsQR = window.jsQR;
-    return jsQR(data, plate.size, plate.size, { inversionAttempts: "dontInvert" })?.data ?? null;
-  }, { sel: selector, plate: QR_PLATES[style][format] });
+    const data = ctx.getImageData(p.x, p.y, p.size, p.size).data;
+    let binary = "";
+    for (let i = 0; i < data.length; i += 1) binary += String.fromCharCode(data[i]);
+    return btoa(binary);
+  }, { sel: selector, p: plate });
+  if (!base64) return null;
+  const rgba = new Uint8ClampedArray(Buffer.from(base64, "base64"));
+  return jsQR(rgba, plate.size, plate.size, { inversionAttempts: "dontInvert" })?.data ?? null;
 }
 
 async function pngInfo(file) {

@@ -19,6 +19,9 @@ import json
 import sys
 from pathlib import Path
 
+if sys.flags.optimize:
+    raise SystemExit("FAIL: this packer depends on assertions; do not run with python -O")
+
 FORMAT_ID = "pi-atlas-packed-v1"
 
 
