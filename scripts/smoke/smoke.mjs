@@ -62,9 +62,21 @@ function parseArgs() {
     console.error("smoke: no target URL. Use --base-url or SMOKE_BASE_URL.");
     process.exit(2);
   }
+  // Live targets serve the full 1B dataset over the public internet. A cold
+  // visit (or a fresh browser context) downloads ~478 MiB before the first
+  // result, which can take well over a minute; local preview is fast. Keep UI
+  // micro-interaction waits short, but scale data-dependent waits to reality.
+  const actionTimeout = process.env.SMOKE_TIMEOUT_MS
+    ? Number.parseInt(process.env.SMOKE_TIMEOUT_MS, 10)
+    : live ? 300_000 : 60_000;
+  if (!Number.isInteger(actionTimeout) || actionTimeout <= 0) {
+    console.error("smoke: SMOKE_TIMEOUT_MS must be a positive integer (milliseconds).");
+    process.exit(2);
+  }
   return {
     baseURL: baseURL.endsWith("/") ? baseURL : `${baseURL}/`,
     live,
+    actionTimeout,
     skip: new Set((process.env.SMOKE_SKIP ?? "").split(",").map((s) => s.trim()).filter(Boolean)),
     expectDigits: process.env.SMOKE_EXPECT_DIGITS ? Number.parseInt(process.env.SMOKE_EXPECT_DIGITS, 10) : null,
   };
@@ -74,7 +86,7 @@ const cfg = parseArgs();
 const harness = new SmokeHarness({ ...cfg, allow: ALLOW_FAILED_REQUESTS });
 const route = (hash) => new URL(hash.startsWith("#") ? hash : `#${hash}`, cfg.baseURL).toString();
 
-async function waitFor(page, text, timeout = 60_000) {
+async function waitFor(page, text, timeout = cfg.actionTimeout) {
   await page.waitForFunction((needle) => (document.body.textContent ?? "").includes(needle), text, { timeout });
 }
 
@@ -134,7 +146,7 @@ async function main() {
     await page.waitForFunction(
       () => (document.body.textContent ?? "").includes("verified") && (document.body.textContent ?? "").includes("served live"),
       undefined,
-      { timeout: 60_000 },
+      { timeout: cfg.actionTimeout },
     );
     return "home 200, title and hero visible";
   }, { usePage: page });
@@ -158,8 +170,8 @@ async function main() {
   await harness.check("digits-12", async () => {
     const started = Date.now();
     await gotoHash(page, "#/explore/digits?q=12");
-    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: 60_000 });
-    await waitFor(page, "position 148", 60_000);
+    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: cfg.actionTimeout });
+    await waitFor(page, "position 148", cfg.actionTimeout);
     firstResultMs = Date.now() - started;
     await page.getByRole("button", { name: /copy link/i }).click();
     shareUrl = await page.evaluate(() => navigator.clipboard.readText());
@@ -168,24 +180,25 @@ async function main() {
   }, { usePage: page });
 
   await harness.check("deep-link-roundtrip", async () => {
+    assert.ok(shareUrl, "no share URL: digits-12 did not complete");
     const fresh = await harness.newContext({ viewport: { width: 1280, height: 900 } });
     const p = await harness.newPage(fresh);
     await p.goto(shareUrl);
-    await p.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: 60_000 });
-    await waitFor(p, "position 148", 60_000);
+    await p.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: cfg.actionTimeout });
+    await waitFor(p, "position 148", cfg.actionTimeout);
     return "fresh context restored position 148";
   }, { usePage: page });
 
   await harness.check("digits-feynman", async () => {
     await gotoHash(page, "#/explore/digits?q=999999");
-    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: 60_000 });
-    await waitFor(page, "position 762", 60_000);
+    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: cfg.actionTimeout });
+    await waitFor(page, "position 762", cfg.actionTimeout);
     return "first position 762";
   }, { usePage: page });
 
   await harness.check("digits-not-found", async () => {
     await gotoHash(page, "#/explore/digits?q=98765432109876543210");
-    await page.getByText("NOT FOUND", { exact: true }).waitFor({ state: "visible", timeout: 60_000 });
+    await page.getByText("NOT FOUND", { exact: true }).waitFor({ state: "visible", timeout: cfg.actionTimeout });
     return "not-found result rendered without a crash";
   }, { usePage: page });
 
@@ -193,7 +206,7 @@ async function main() {
     await gotoHash(page, "#/explore/letters");
     await page.getByLabel(/word \(1–12 letters/i).fill("PI");
     await page.getByRole("button", { name: /search both frames/i }).click();
-    await page.getByText(/Total matches \(both frames\)/i).waitFor({ state: "visible", timeout: 60_000 });
+    await page.getByText(/Total matches \(both frames\)/i).waitFor({ state: "visible", timeout: cfg.actionTimeout });
     return "PI found in letters explorer";
   }, { usePage: page });
 
@@ -202,7 +215,7 @@ async function main() {
     await gotoHash(page, "#/explore/shapes");
     await page.getByRole("button", { name: "Plus", exact: true }).click();
     await page.getByRole("button", { name: "Search pattern" }).click();
-    await page.getByText("Matches in dataset").waitFor({ state: "visible", timeout: 60_000 });
+    await page.getByText("Matches in dataset").waitFor({ state: "visible", timeout: cfg.actionTimeout });
     const elapsed = Date.now() - started;
     return `shape result in ${elapsed} ms${elapsed > 20_000 ? " (slow)" : ""}`;
   }, { usePage: page });
@@ -217,15 +230,15 @@ async function main() {
       await gotoHash(page, `#/explore/digits?q=${c.query}`);
       await page.getByText("FOUND", { exact: true })
         .or(page.getByText("NOT FOUND", { exact: true }))
-        .first().waitFor({ state: "visible", timeout: 60_000 });
+        .first().waitFor({ state: "visible", timeout: cfg.actionTimeout });
       await page.getByRole("heading", { name: `You earned a ${c.heading} card` })
         .waitFor({ state: "visible", timeout: 30_000 });
-      await page.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: 90_000 });
+      await page.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: cfg.actionTimeout });
       await openDialog(page);
       for (const format of ["square", "story", "wide"]) {
         await page.locator("label.chip").filter({ hasText: FORMAT_LABELS[format] }).first().click();
         const [download] = await Promise.all([
-          page.waitForEvent("download", { timeout: 60_000 }),
+          page.waitForEvent("download", { timeout: cfg.actionTimeout }),
           page.getByRole("button", { name: "Download PNG" }).click(),
         ]);
         const file = `pi-atlas-wish-digits-${c.slug}-${format}.png`;
@@ -258,7 +271,7 @@ async function main() {
       await gotoHash(page, `#/explore/digits?q=${c.query}`);
       await page.getByText("FOUND", { exact: true })
         .or(page.getByText("NOT FOUND", { exact: true }))
-        .first().waitFor({ state: "visible", timeout: 60_000 });
+        .first().waitFor({ state: "visible", timeout: cfg.actionTimeout });
       await page.getByRole("heading", { name: `You earned a ${c.tier} card` })
         .waitFor({ state: "visible", timeout: 30_000 });
       await openDialog(page);
@@ -273,8 +286,8 @@ async function main() {
 
   await harness.check("wishcard-qr-host", async () => {
     await gotoHash(page, "#/explore/digits?q=12");
-    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: 60_000 });
-    await page.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: 90_000 });
+    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: cfg.actionTimeout });
+    await page.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: cfg.actionTimeout });
     await openDialog(page);
     qr12 = await decodeQr(page, '[role="dialog"] canvas');
     assert.ok(qr12, "card QR did not decode");
@@ -320,12 +333,13 @@ async function main() {
   }, { usePage: page });
 
   await harness.check("banner-from-qr", async () => {
+    assert.ok(qr12, "no QR URL: wishcard-qr-host did not complete");
     const fresh = await harness.newContext({ viewport: { width: 1280, height: 900 } });
     const p = await harness.newPage(fresh);
     await p.goto(qr12);
     const banner = p.locator(BANNER);
-    await banner.waitFor({ state: "visible", timeout: 90_000 });
-    await waitFor(p, "position 148", 90_000);
+    await banner.waitFor({ state: "visible", timeout: cfg.actionTimeout });
+    await waitFor(p, "position 148", cfg.actionTimeout);
     assert.match(await banner.innerText(), /position 148/);
     await p.getByRole("button", { name: "Search your own" }).click();
     await banner.waitFor({ state: "detached", timeout: 10_000 });
@@ -343,13 +357,13 @@ async function main() {
     await gotoHash(page, "#/explore/dates");
     await page.locator("#date-q").fill("2006-09-07");
     await page.getByRole("button", { name: /search six formats/i }).click();
-    await waitFor(page, "Format comparison", 60_000);
+    await waitFor(page, "Format comparison", cfg.actionTimeout);
     // The date helper's "Open in Number Explorer" action opens this exact deep
     // link (d=1 marks it as a date-helper search); navigate to it directly so
     // the check does not depend on that button's timing.
     await gotoHash(page, "#/explore/digits?q=07092006&d=1");
-    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: 60_000 });
-    await page.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: 90_000 });
+    await page.getByText("FOUND", { exact: true }).waitFor({ state: "visible", timeout: cfg.actionTimeout });
+    await page.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: cfg.actionTimeout });
     await openDialog(page);
     assert.equal(await page.getByRole("checkbox", { name: /hide my digits/i }).isChecked(), true,
       "date helper did not default to Hide my digits");
@@ -380,12 +394,13 @@ async function main() {
       assert.ok(await overflow(), `horizontal overflow at ${hash}`);
     }
     await gotoHash(p, "#/explore/digits?q=12");
-    await p.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: 90_000 });
+    await p.locator(`${WISH} canvas`).waitFor({ state: "visible", timeout: cfg.actionTimeout });
     await openDialog(p);
     assert.ok(await overflow(), "horizontal overflow with the wish card dialog open");
+    assert.ok(qr12, "no QR URL: wishcard-qr-host did not complete");
     await p.goto(qr12);
     await p.reload({ waitUntil: "domcontentloaded" });
-    await p.locator(BANNER).waitFor({ state: "visible", timeout: 90_000 });
+    await p.locator(BANNER).waitFor({ state: "visible", timeout: cfg.actionTimeout });
     assert.ok(await overflow(), "horizontal overflow with the banner open");
     return "390×844: 5 routes, dialog and banner fit";
   }, { usePage: page });
@@ -427,7 +442,11 @@ async function main() {
     return `0 failed requests (allow-list: ${ALLOW_FAILED_REQUESTS.length})`;
   }, { usePage: page });
 
-  harness.soft("first-result-time", firstResultMs > 5_000, `${firstResultMs} ms (warn over 5000 ms)`);
+  // A cold live visit includes the full 1B dataset download, so the local
+  // 5 s budget is meaningless there; still flag genuinely pathological waits.
+  const firstResultBudget = cfg.live ? cfg.actionTimeout : 5_000;
+  harness.soft("first-result-time", firstResultMs > firstResultBudget,
+    `${firstResultMs} ms (warn over ${firstResultBudget} ms)`);
   harness.soft("data-transfer", harness.bytes > 60 * 1024 * 1024,
     `${(harness.bytes / 1024 / 1024).toFixed(2)} MB (warn over 60 MB)`);
   const heap = await page.evaluate(() => (performance.memory?.usedJSHeapSize ?? 0));

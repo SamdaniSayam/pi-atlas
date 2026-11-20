@@ -25,9 +25,10 @@ function matchesAllowed(text, allow) {
 }
 
 export class SmokeHarness {
-  constructor({ baseURL, live, skip = new Set(), allow = [] }) {
+  constructor({ baseURL, live, actionTimeout = 60_000, skip = new Set(), allow = [] }) {
     this.baseURL = baseURL;
     this.live = live;
+    this.actionTimeout = actionTimeout;
     this.skip = skip;
     this.allow = allow;
     this.results = [];
@@ -54,6 +55,10 @@ export class SmokeHarness {
 
   async newContext(options = {}) {
     const ctx = await this.browser.newContext(options);
+    // Keep every fresh context (including banner/mobile ones that re-download
+    // the full dataset) on the same data-dependent timeout budget.
+    ctx.setDefaultTimeout(this.actionTimeout);
+    ctx.setDefaultNavigationTimeout(this.actionTimeout);
     ctx.on("requestfailed", (request) => {
       const reason = request.failure()?.errorText ?? "failed";
       // The smoke test deliberately reloads pages between hash routes, which

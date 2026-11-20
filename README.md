@@ -232,6 +232,10 @@ Optional environment variables:
   Handy for baselining an older live build that lacks newer features (for
   example `SMOKE_SKIP=wishcard-qr-host,banner-from-qr`). SKIP does not count as
   a failure.
+- `SMOKE_TIMEOUT_MS=300000` — budget for data-dependent waits (milliseconds).
+  Defaults to 300 s for `smoke:live` and 60 s for `smoke:local`; a cold live
+  visit downloads the full 478 MiB dataset and can take ~2–3 minutes. Short
+  UI micro-interaction waits are unaffected.
 
 Known-harmless failed requests can be allow-listed by editing
 `ALLOW_FAILED_REQUESTS` at the top of `scripts/smoke/smoke.mjs` (empty by
